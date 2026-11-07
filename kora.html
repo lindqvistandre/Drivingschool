@@ -200,7 +200,7 @@ const $ = id => document.getElementById(id);
 
 let valtOmrade = OMRADEN[0];
 let scen, kamera, renderare, bil, klocka;
-let vagsegment = [], rutnat = new Map(), RUTA = 60;
+let vagsegment = [], rutnat = new Map(), RUTA = 60, korsningar = [];
 let skyltlista = [];
 let origo = null;
 let korning = { x:0, z:0, kurs:0, fart:0, ratt:0 };
@@ -439,56 +439,101 @@ function byggVarld(element){
 
 function byggMark(){
   const g = new THREE.PlaneGeometry(6000, 6000);
-  const m = new THREE.MeshLambertMaterial({ color:0x2e3a2c });
+  const m = new THREE.MeshLambertMaterial({ color:0x4a5a3e });
   const mark = new THREE.Mesh(g, m);
   mark.rotation.x = -Math.PI/2;
   mark.position.y = -0.06;
   scen.add(mark);
 }
 
+/* Lägger en fyrhörning mellan två punkter, med given halvbredd och höjd. */
+function band(ut, a, b, hb, y){
+  const dx = b.x - a.x, dz = b.z - a.z, len = Math.hypot(dx, dz);
+  if(len < 0.05) return;
+  const nx = -dz/len*hb, nz = dx/len*hb;
+  ut.push(a.x+nx,y,a.z+nz,  a.x-nx,y,a.z-nz,  b.x-nx,y,b.z-nz);
+  ut.push(a.x+nx,y,a.z+nz,  b.x-nx,y,b.z-nz,  b.x+nx,y,b.z+nz);
+}
+
+/* Rund platta i en skarv. Utan dessa blir det ett hål i asfalten i varje
+   kurva och korsning — det var det som fick världen att se trasig ut. */
+function platta(ut, p, r, y, kanter = 9){
+  for(let i = 0; i < kanter; i++){
+    const a1 = i/kanter * Math.PI*2, a2 = (i+1)/kanter * Math.PI*2;
+    ut.push(p.x, y, p.z);
+    ut.push(p.x + Math.cos(a1)*r, y, p.z + Math.sin(a1)*r);
+    ut.push(p.x + Math.cos(a2)*r, y, p.z + Math.sin(a2)*r);
+  }
+}
+
 function byggVagar(vagar){
-  const pos = [], mitt = [];
+  const asfalt = [], kant = [], streck = [], trottoar = [];
+  korsningar = [];
+
   vagar.forEach(v => {
     const typ = VAGTYP[v.tags.highway];
-    const halvbredd = typ.b / 2;
+    const hb = typ.b / 2;
     const grans = tolkaFart(v.tags, typ.f);
-    const namn = v.tags.name || v.tags.highway;
-    const punkter = v.geometry.map(p => tillMeter(p.lat, p.lon));
+    const namn = v.tags.name || "";
+    const p = v.geometry.map(q => tillMeter(q.lat, q.lon));
+    const stor = typ.b >= 8;
 
-    for(let i = 0; i < punkter.length - 1; i++){
-      const a = punkter[i], b = punkter[i+1];
-      const dx = b.x - a.x, dz = b.z - a.z;
-      const len = Math.hypot(dx, dz);
-      if(len < 0.4) continue;
-      const nx = -dz/len * halvbredd, nz = dx/len * halvbredd;
+    // Trottoar först, så asfalten lägger sig ovanpå kanten
+    if(typ.b >= 5){
+      for(let i = 0; i < p.length-1; i++) band(trottoar, p[i], p[i+1], hb+1.7, -0.02);
+      p.forEach(q => platta(trottoar, q, hb+1.7, -0.02));
+    }
 
-      pos.push(a.x+nx,0,a.z+nz,  a.x-nx,0,a.z-nz,  b.x-nx,0,b.z-nz);
-      pos.push(a.x+nx,0,a.z+nz,  b.x-nx,0,b.z-nz,  b.x+nx,0,b.z+nz);
+    for(let i = 0; i < p.length-1; i++){
+      const a = p[i], b = p[i+1];
+      const dx = b.x-a.x, dz = b.z-a.z, len = Math.hypot(dx, dz);
+      if(len < 0.3) continue;
 
-      // mittlinje på större vägar
-      if(typ.b >= 8){
-        const m = 0.14;
-        const mx = -dz/len*m, mz = dx/len*m;
-        mitt.push(a.x+mx,0.02,a.z+mz, a.x-mx,0.02,a.z-mz, b.x-mx,0.02,b.z-mz);
-        mitt.push(a.x+mx,0.02,a.z+mz, b.x-mx,0.02,b.z-mz, b.x+mx,0.02,b.z+mz);
+      band(asfalt, a, b, hb, 0);
+
+      // Kantlinjer i vitt en bit innanför kanten
+      if(typ.b >= 6){
+        const ex = -dz/len*(hb-0.35), ez = dx/len*(hb-0.35);
+        band(kant, {x:a.x+ex, z:a.z+ez}, {x:b.x+ex, z:b.z+ez}, 0.07, 0.015);
+        band(kant, {x:a.x-ex, z:a.z-ez}, {x:b.x-ex, z:b.z-ez}, 0.07, 0.015);
       }
 
-      const seg = { ax:a.x, az:a.z, bx:b.x, bz:b.z, halvbredd, grans, namn };
+      // Streckad mittlinje på större vägar: 3 m streck, 3 m lucka
+      if(stor){
+        const steg = 6, antal = Math.floor(len/steg);
+        for(let k = 0; k < antal; k++){
+          const t1 = k*steg/len, t2 = (k*steg+3)/len;
+          band(streck,
+            {x:a.x+dx*t1, z:a.z+dz*t1},
+            {x:a.x+dx*t2, z:a.z+dz*t2}, 0.09, 0.02);
+        }
+      }
+
+      const seg = { ax:a.x, az:a.z, bx:b.x, bz:b.z, halvbredd:hb, grans, namn,
+                    typ:v.tags.highway, stor };
       vagsegment.push(seg);
       registreraIRutnat(seg);
     }
+
+    // Fyll varje skarv
+    p.forEach(q => platta(asfalt, q, hb, 0.001));
+    // Spara ändpunkterna — används för att hitta korsningar
+    korsningar.push({ p:p[0], hb, stor, grans, namn, riktning:p[1] },
+                    { p:p[p.length-1], hb, stor, grans, namn, riktning:p[p.length-2] });
   });
 
-  lagg(pos, 0x3b4046, 0);
-  if(mitt.length) lagg(mitt, 0xc9c6b4, 0);
+  lagg(trottoar, 0x6e6a63, 0);
+  lagg(asfalt,   0x33373c, 0);
+  lagg(kant,     0xcfcdc2, 0);
+  lagg(streck,   0xcfcdc2, 0);
 }
 
 function lagg(pos, farg, y){
+  if(!pos.length) return;
   const g = new THREE.BufferGeometry();
   g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
   g.computeVertexNormals();
-  const m = new THREE.MeshLambertMaterial({ color:farg, side:THREE.DoubleSide });
-  const mesh = new THREE.Mesh(g, m);
+  const mesh = new THREE.Mesh(g, new THREE.MeshLambertMaterial({ color:farg }));
   mesh.position.y = y;
   scen.add(mesh);
 }
@@ -560,29 +605,97 @@ function skyltTextur(typ){
   return t;
 }
 
-function byggSkyltar(noder){
-  const texturer = {};
-  ["give_way","stop","crossing","traffic_signals"].forEach(t => texturer[t] = skyltTextur(t));
-  const stolpeGeo = new THREE.CylinderGeometry(0.06, 0.06, 2.3, 6);
-  const stolpeMat = new THREE.MeshLambertMaterial({ color:0x9aa0a6 });
-  const skivaGeo = new THREE.PlaneGeometry(1.0, 1.0);
+/* Hastighetsskylt: vit rund skiva med röd ring */
+function fartTextur(tal){
+  const c = document.createElement("canvas"); c.width = c.height = 128;
+  const g = c.getContext("2d");
+  g.fillStyle = "#c8102e"; g.beginPath(); g.arc(64,64,62,0,7); g.fill();
+  g.fillStyle = "#fff";    g.beginPath(); g.arc(64,64,46,0,7); g.fill();
+  g.fillStyle = "#111"; g.font = "bold 54px sans-serif";
+  g.textAlign = "center"; g.textBaseline = "middle";
+  g.fillText(String(tal), 64, 68);
+  const t = new THREE.CanvasTexture(c); t.needsUpdate = true; return t;
+}
 
-  noder.slice(0, 900).forEach(n => {
-    const typ = n.tags.highway;
-    if(!texturer[typ]) return;
+function stallSkylt(textur, x, z, storlek){
+  const grupp = new THREE.Group();
+  const stolpe = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.055, 0.055, 2.2, 6),
+    new THREE.MeshLambertMaterial({ color:0x9aa0a6 }));
+  stolpe.position.y = 1.1;
+  grupp.add(stolpe);
+  const skiva = new THREE.Mesh(
+    new THREE.PlaneGeometry(storlek, storlek),
+    new THREE.MeshBasicMaterial({ map:textur, transparent:true,
+      side:THREE.DoubleSide, depthWrite:false }));
+  skiva.position.y = 2.3 + storlek/2;
+  grupp.add(skiva);
+  grupp.position.set(x, 0, z);
+  scen.add(grupp);
+  skyltlista.push({ x, z, mesh:skiva });
+}
+
+function byggSkyltar(noder){
+  const tex = {};
+  ["give_way","stop","crossing","traffic_signals"].forEach(t => tex[t] = skyltTextur(t));
+  const fartTex = {};
+
+  // 1. Skyltar som faktiskt finns i OSM
+  noder.slice(0, 700).forEach(n => {
+    if(!tex[n.tags.highway]) return;
     const p = tillMeter(n.lat, n.lon);
-    const grupp = new THREE.Group();
-    const stolpe = new THREE.Mesh(stolpeGeo, stolpeMat);
-    stolpe.position.y = 1.15;
-    grupp.add(stolpe);
-    const skiva = new THREE.Mesh(skivaGeo, new THREE.MeshBasicMaterial({
-      map:texturer[typ], transparent:true, side:THREE.DoubleSide }));
-    skiva.position.y = 2.5;
-    grupp.add(skiva);
-    grupp.position.set(p.x, 0, p.z);
-    scen.add(grupp);
-    skyltlista.push({ x:p.x, z:p.z, typ, mesh:skiva });
+    stallSkylt(tex[n.tags.highway], p.x, p.z, 1.5);
   });
+
+  // 2. Härledda väjningspliktsmärken.
+  //    Svenska bostadsgator har sällan väjningsplikt kartlagd i OSM, men
+  //    regeln gäller ändå: den som kommer från en mindre gata ut på en
+  //    större har väjningsplikt. Vi letar upp varje sådan mynning i
+  //    vägnätet och sätter dit märket själva.
+  let satta = 0;
+  korsningar.forEach(k => {
+    if(k.stor || satta > 120) return;            // bara mindre gator
+    const n = narmasteStoraVag(k.p.x, k.p.z);
+    if(!n || n.avstand > n.hb + 9) return;
+    // Backa 7 m in på den lilla gatan och ställ märket 2,5 m åt sidan
+    const dx = k.p.x - k.riktning.x, dz = k.p.z - k.riktning.z;
+    const l = Math.hypot(dx, dz) || 1;
+    const bx = k.p.x - dx/l*8, bz = k.p.z - dz/l*8;
+    stallSkylt(tex.give_way, bx - dz/l*(k.hb+1.4), bz + dx/l*(k.hb+1.4), 1.5);
+    satta++;
+  });
+
+  // 3. Hastighetsskyltar där gränsen ändras
+  let fartSatta = 0;
+  korsningar.forEach(k => {
+    if(fartSatta > 60) return;
+    const n = narmasteStoraVag(k.p.x, k.p.z);
+    if(!n || n.avstand > n.hb + 9 || n.grans === k.grans) return;
+    if(!fartTex[k.grans]) fartTex[k.grans] = fartTextur(k.grans);
+    const dx = k.p.x - k.riktning.x, dz = k.p.z - k.riktning.z;
+    const l = Math.hypot(dx, dz) || 1;
+    stallSkylt(fartTex[k.grans],
+      k.p.x - dx/l*17 - dz/l*(k.hb+1.4),
+      k.p.z - dz/l*17 + dx/l*(k.hb+1.4), 1.3);
+    fartSatta++;
+  });
+
+  logg(`${satta} väjningsplikter och ${fartSatta} hastighetsskyltar härledda ur vägnätet`);
+}
+
+function narmasteStoraVag(x, z){
+  const i = Math.floor(x/RUTA), j = Math.floor(z/RUTA);
+  let bast = null, ba = Infinity;
+  for(let a = -1; a <= 1; a++) for(let b = -1; b <= 1; b++){
+    const lista = rutnat.get((i+a) + ":" + (j+b));
+    if(!lista) continue;
+    for(const s of lista){
+      if(!s.stor) continue;
+      const d = avstandTillSegment(x, z, s);
+      if(d < ba){ ba = d; bast = s; }
+    }
+  }
+  return bast ? { avstand:ba, hb:bast.halvbredd, grans:bast.grans } : null;
 }
 
 /* ═══ Rutnät för snabb vägsökning ═══ */
@@ -908,8 +1021,21 @@ $("spara").addEventListener("click", () => {
 
 function initScen(){
   scen = new THREE.Scene();
-  scen.background = new THREE.Color(0x8fa7bd);
-  scen.fog = new THREE.Fog(0x8fa7bd, 190, 620);
+  scen.fog = new THREE.Fog(0xaebfd0, 230, 760);
+
+  // Himmel som en toning i stället för en platt färg
+  const hc = document.createElement("canvas");
+  hc.width = 2; hc.height = 256;
+  const hg = hc.getContext("2d").createLinearGradient(0,0,0,256);
+  hg.addColorStop(0,   "#4b7bb0");
+  hg.addColorStop(0.5, "#8fb0cd");
+  hg.addColorStop(1,   "#cdd8e0");
+  const hx = hc.getContext("2d"); hx.fillStyle = hg; hx.fillRect(0,0,2,256);
+  const himmel = new THREE.Mesh(
+    new THREE.SphereGeometry(1500, 24, 14),
+    new THREE.MeshBasicMaterial({ map:new THREE.CanvasTexture(hc),
+      side:THREE.BackSide, depthWrite:false, fog:false }));
+  scen.add(himmel);
 
   kamera = new THREE.PerspectiveCamera(62, innerWidth/innerHeight, 0.5, 1800);
   renderare = new THREE.WebGLRenderer({ antialias:true });
@@ -925,10 +1051,13 @@ function initScen(){
   taFokus();
   renderare.domElement.addEventListener("pointerdown", taFokus);
 
-  scen.add(new THREE.HemisphereLight(0xdfeaf5, 0x40463c, 1.0));
-  const sol = new THREE.DirectionalLight(0xfff4e0, 0.75);
-  sol.position.set(130, 220, 90);
+  scen.add(new THREE.HemisphereLight(0xcfe0f0, 0x4a5240, 0.85));
+  const sol = new THREE.DirectionalLight(0xfff1d8, 0.95);
+  sol.position.set(160, 240, 110);
   scen.add(sol);
+  const mot = new THREE.DirectionalLight(0x9fb4c8, 0.3);
+  mot.position.set(-140, 90, -120);
+  scen.add(mot);
 
   addEventListener("resize", () => {
     kamera.aspect = innerWidth/innerHeight;
