@@ -129,6 +129,7 @@ canvas{display:block}
   <div class="knapprad">
     <button class="knapp knapp--gul" id="bygg">Bygg världen</button>
     <button class="knapp" id="testvarld">Övningsområde</button>
+    <button class="knapp" id="diagnos">Diagnos</button>
   </div>
   <div class="matare"><i id="framdrift"></i></div>
   <div class="logg" id="logg">Välj område och tryck Bygg världen.</div>
@@ -238,47 +239,117 @@ async function hamtaOSM(o){
   const q = fraga(o);
   let natverksfel = 0, sistaFel = null;
 
-  for(let i = 0; i < SERVRAR.length; i++){
-    const s = SERVRAR[i];
-    logg(`Hämtar från ${s.namn}… (${i+1}/${SERVRAR.length})`);
-    try{
-      const svar = await fetch(s.url, {
-        method:"POST",
-        headers:{ "Content-Type":"application/x-www-form-urlencoded" },
-        body:"data=" + encodeURIComponent(q)
-      });
-      if(!svar.ok){
-        sistaFel = `${s.namn} svarade ${svar.status}` +
-          (svar.status === 429 || svar.status === 504 ? " (överbelastad)" : "");
-        continue;
+  const logg_ = [];
+  let forsok = 0;
+
+  // Varje server provas med POST och sedan GET. Vissa nät och mellanservrar
+  // släpper bara igenom GET.
+  for(const s of SERVRAR){
+    for(const metod of ["POST","GET"]){
+      forsok++;
+      logg(`Hämtar från ${s.namn} (${metod})… försök ${forsok} av ${SERVRAR.length*2}`);
+      try{
+        const url = metod === "GET" ? s.url + "?data=" + encodeURIComponent(q) : s.url;
+        const inst = metod === "POST"
+          ? { method:"POST", headers:{ "Content-Type":"application/x-www-form-urlencoded" },
+              body:"data=" + encodeURIComponent(q) }
+          : { method:"GET" };
+        const svar = await medTidsgrans(url, inst, 45000);
+        if(!svar.ok){
+          logg_.push(`${s.namn} ${metod}: HTTP ${svar.status}`);
+          sistaFel = `${s.namn} svarade ${svar.status}`;
+          continue;
+        }
+        const d = await svar.json();
+        if(!d.elements || !d.elements.length){
+          logg_.push(`${s.namn} ${metod}: tomt svar`);
+          continue;
+        }
+        return d.elements;
+      }catch(f){
+        if(f.name === "TypeError"){ natverksfel++; logg_.push(`${s.namn} ${metod}: blockerad`); }
+        else if(f.name === "AbortError") logg_.push(`${s.namn} ${metod}: timeout`);
+        else logg_.push(`${s.namn} ${metod}: ${f.name}`);
+        sistaFel = `${s.namn}: ${f.message || f.name}`;
       }
-      const d = await svar.json();
-      if(!d.elements || !d.elements.length){
-        sistaFel = `${s.namn} returnerade tomt`;
-        continue;
-      }
-      return d.elements;
-    }catch(f){
-      // TypeError från fetch = anropet nådde aldrig nätet
-      if(f instanceof TypeError) natverksfel++;
-      sistaFel = `${s.namn}: ${f.message}`;
     }
   }
 
-  if(natverksfel === SERVRAR.length){
-    const viaFil = location.protocol === "file:";
-    throw new Error(
-      "Webbläsaren blockerade alla anrop innan de nådde nätet.\n" +
-      (viaFil
-        ? "Du har öppnat filen direkt från hårddisken (file://). Webbläsare tillåter inte externa anrop då. Starta en liten webbserver: python3 -m http.server 8000 — öppna sedan http://localhost:8000/kora.html"
-        : "Sidan körs troligen i en sandlåda som spärrar externa anrop, till exempel en förhandsvisning. Ladda ner filen och kör den via en lokal webbserver eller GitHub Pages.") +
-      "\nTryck Övningsområde för att köra utan nätet — det fungerar alltid.");
-  }
-  throw new Error((sistaFel || "okänt fel") + ". Alla servrar nekade. Prova igen om en minut.");
+  // Ingen gissning om orsaken — bara vad som faktiskt hände, per server.
+  throw new Error(
+    "Ingen av servrarna gick att nå.\n\n" + logg_.join("\n") +
+    "\n\nTryck Diagnos för en fullständig rapport, eller Övningsområde " +
+    "för att köra utan nätet.");
 }
 
 /* ═══ Testvärld — ett påhittat rutnät, helt utan nätet ═══
    Finns för att kunna skilja "nätet är blockerat" från "3D-motorn är trasig". */
+/* ═══ Diagnos ═══
+   Svarar på frågan som felmeddelandet inte kunde: är det sidan, nätet,
+   eller en specifik server? Testar varje server för sig, med både POST
+   och GET, plus ett kontrollanrop till en server som garanterat har CORS. */
+async function medTidsgrans(url, inst, ms){
+  const ac = new AbortController();
+  const t = setTimeout(() => ac.abort(), ms);
+  try{ return await fetch(url, Object.assign({ signal:ac.signal }, inst)); }
+  finally{ clearTimeout(t); }
+}
+
+async function diagnos(){
+  $("diagnos").disabled = true;
+  const rader = [];
+  rader.push("Adress:    " + location.origin);
+  rader.push("Protokoll: " + location.protocol);
+  rader.push("I ram:     " + (window.top !== window.self ? "JA — sandlåda möjlig" : "nej"));
+  rader.push("Uppkoppling: " + (navigator.onLine ? "online" : "OFFLINE"));
+  rader.push("");
+  logg(rader.join("\n"));
+
+  // Kontroll: en server som säkert svarar med CORS
+  try{
+    const r = await medTidsgrans("https://api.github.com/zen", {}, 12000);
+    rader.push("Kontrollanrop (github): " + (r.ok ? "OK" : "HTTP " + r.status));
+  }catch(f){
+    rader.push("Kontrollanrop (github): BLOCKERAT (" + f.name + ")");
+  }
+  rader.push("");
+  logg(rader.join("\n"));
+
+  // Minsta tänkbara fråga — en enda väg
+  const minifraga = '[out:json][timeout:25];way["highway"="secondary"]'
+    + '(59.2430,18.0900,59.2450,18.0940);out geom;';
+
+  for(const s of SERVRAR){
+    for(const metod of ["POST","GET"]){
+      let utfall;
+      try{
+        const url = metod === "GET"
+          ? s.url + "?data=" + encodeURIComponent(minifraga) : s.url;
+        const inst = metod === "POST"
+          ? { method:"POST", headers:{ "Content-Type":"application/x-www-form-urlencoded" },
+              body:"data=" + encodeURIComponent(minifraga) }
+          : { method:"GET" };
+        const r = await medTidsgrans(url, inst, 25000);
+        if(r.ok){
+          const d = await r.json();
+          utfall = "OK — " + (d.elements ? d.elements.length : 0) + " element";
+        } else utfall = "HTTP " + r.status;
+      }catch(f){
+        utfall = f.name === "AbortError" ? "TIMEOUT efter 25 s"
+               : f.name === "TypeError" ? "BLOCKERAT innan nätet" : f.name;
+      }
+      rader.push(metod.padEnd(5) + s.namn.padEnd(17) + utfall);
+      logg(rader.join("\n"));
+    }
+  }
+
+  rader.push("");
+  rader.push("Skicka hela denna text till Claude.");
+  logg(rader.join("\n"));
+  $("diagnos").disabled = false;
+}
+$("diagnos").addEventListener("click", diagnos);
+
 /* ═══ Övningsområdet ═══
    Ett påhittat men genomtänkt bostadsområde i svensk förortsstil. Byggs i
    meter och räknas om till koordinater, så det fungerar var som helst.
