@@ -75,6 +75,15 @@ canvas{display:block}
 .skylt{width:52px;height:52px;border-radius:50%;background:#fff;border:5px solid var(--rod);
   display:grid;place-content:center;font-family:var(--display);font-weight:700;font-size:21px;
   color:#111;box-shadow:0 3px 14px rgba(0,0,0,.6)}
+.anmbricka{position:absolute;left:14px;top:52px;background:rgba(25,28,32,.84);
+  border:1px solid var(--linje);border-radius:3px;padding:4px 11px;
+  font-family:var(--mono);font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;
+  color:var(--dov)}
+.anmbricka b{color:var(--gul);font-family:var(--display);font-size:14px}
+.anmtext{position:absolute;left:14px;top:84px;background:rgba(200,16,46,.94);
+  border-radius:3px;padding:8px 13px;font-size:12.5px;line-height:1.4;
+  max-width:min(400px,72vw);opacity:0;transition:opacity .2s ease}
+.anmtext[data-pa="true"]{opacity:1}
 .gata{position:absolute;left:14px;top:14px;background:rgba(25,28,32,.84);border:1px solid var(--linje);
   border-radius:3px;padding:6px 12px;font-family:var(--display);font-weight:600;font-size:17px;
   letter-spacing:.03em;max-width:62vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -139,6 +148,8 @@ canvas{display:block}
 <div class="hud" id="hud" hidden>
   <div class="kompassband" id="kompassband"><b id="kband"></b><em></em></div>
   <div class="gata" id="gata">—</div>
+  <div class="anmbricka" id="anmbricka">Anmärkningar <b id="anmrakning">0</b></div>
+  <div class="anmtext" id="anm" data-pa="false">—</div>
   <div class="notis" id="notis" data-pa="false">—</div>
   <div class="matartavla">
     <div class="fart"><span id="farttext">0</span><br><span>KM/H</span></div>
@@ -617,7 +628,7 @@ function fartTextur(tal){
   const t = new THREE.CanvasTexture(c); t.needsUpdate = true; return t;
 }
 
-function stallSkylt(textur, x, z, storlek){
+function stallSkylt(textur, x, z, storlek, skyltTyp){
   const grupp = new THREE.Group();
   const stolpe = new THREE.Mesh(
     new THREE.CylinderGeometry(0.055, 0.055, 2.2, 6),
@@ -632,7 +643,7 @@ function stallSkylt(textur, x, z, storlek){
   grupp.add(skiva);
   grupp.position.set(x, 0, z);
   scen.add(grupp);
-  skyltlista.push({ x, z, mesh:skiva });
+  skyltlista.push({ x, z, mesh:skiva, typ:skyltTyp });
 }
 
 function byggSkyltar(noder){
@@ -644,7 +655,7 @@ function byggSkyltar(noder){
   noder.slice(0, 700).forEach(n => {
     if(!tex[n.tags.highway]) return;
     const p = tillMeter(n.lat, n.lon);
-    stallSkylt(tex[n.tags.highway], p.x, p.z, 1.5);
+    stallSkylt(tex[n.tags.highway], p.x, p.z, 1.5, n.tags.highway);
   });
 
   // 2. Härledda väjningspliktsmärken.
@@ -661,7 +672,7 @@ function byggSkyltar(noder){
     const dx = k.p.x - k.riktning.x, dz = k.p.z - k.riktning.z;
     const l = Math.hypot(dx, dz) || 1;
     const bx = k.p.x - dx/l*8, bz = k.p.z - dz/l*8;
-    stallSkylt(tex.give_way, bx - dz/l*(k.hb+1.4), bz + dx/l*(k.hb+1.4), 1.5);
+    stallSkylt(tex.give_way, bx - dz/l*(k.hb+1.4), bz + dx/l*(k.hb+1.4), 1.5, "give_way");
     satta++;
   });
 
@@ -676,7 +687,7 @@ function byggSkyltar(noder){
     const l = Math.hypot(dx, dz) || 1;
     stallSkylt(fartTex[k.grans],
       k.p.x - dx/l*17 - dz/l*(k.hb+1.4),
-      k.p.z - dz/l*17 + dx/l*(k.hb+1.4), 1.3);
+      k.p.z - dz/l*17 + dx/l*(k.hb+1.4), 1.3, "fart");
     fartSatta++;
   });
 
@@ -730,6 +741,107 @@ function narmasteVag(x, z){
     }
   }
   return { seg:bast, avstand:bastAvst };
+}
+
+/* ═══ Vägnätet som graf ═══
+   Segmenten är fristående linjer. För att trafik ska kunna köra behöver
+   de kopplas ihop: ändpunkter som ligger på samma ställe blir samma nod. */
+function nodnyckel(x, z){ return Math.round(x*2) + "," + Math.round(z*2); }
+
+function byggGraf(){
+  grafNoder = new Map();
+  const ta = (x, z) => {
+    const n = nodnyckel(x, z);
+    if(!grafNoder.has(n)) grafNoder.set(n, { x, z, ut:[] });
+    return grafNoder.get(n);
+  };
+  vagsegment.forEach(s => {
+    const a = ta(s.ax, s.az), b = ta(s.bx, s.bz);
+    if(a === b) return;
+    a.ut.push({ till:b, seg:s });
+    b.ut.push({ till:a, seg:s });
+  });
+  grafLista = [...grafNoder.values()].filter(n => n.ut.length > 0);
+  return grafLista.length;
+}
+
+/* ═══ Trafik ═══ */
+const TRAFIKFARGER = [0xb8c0c7, 0x3f4a57, 0x8c3b3b, 0x2f5542, 0x6b5f45, 0xd4d7da];
+
+function nyTrafikbil(naraX, naraZ){
+  if(!grafLista.length) return null;
+  // Starta på en nod i lagom närhet: synlig men inte i knäet
+  let nod = null;
+  for(let i = 0; i < 40; i++){
+    const k = grafLista[(Math.random()*grafLista.length)|0];
+    const d = Math.hypot(k.x - naraX, k.z - naraZ);
+    if(d > 60 && d < 320){ nod = k; break; }
+  }
+  if(!nod) nod = grafLista[(Math.random()*grafLista.length)|0];
+  const kant = nod.ut[(Math.random()*nod.ut.length)|0];
+  if(!kant) return null;
+
+  const mesh = new THREE.Group();
+  const f = TRAFIKFARGER[(Math.random()*TRAFIKFARGER.length)|0];
+  const kaross = new THREE.Mesh(new THREE.BoxGeometry(1.76, 0.7, 4.2),
+    new THREE.MeshLambertMaterial({ color:f }));
+  kaross.position.y = 0.7; mesh.add(kaross);
+  const tak = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.6, 2.1),
+    new THREE.MeshLambertMaterial({ color:0x2b3036 }));
+  tak.position.set(0, 1.33, -0.2); mesh.add(tak);
+  scen.add(mesh);
+
+  return { fran:nod, till:kant.till, seg:kant.seg, t:0, mesh,
+           fart: kant.seg.grans/3.6 * (0.75 + Math.random()*0.2),
+           x:nod.x, z:nod.z, kurs:0 };
+}
+
+function flyttaTrafik(dt){
+  for(const b of trafik){
+    const dx = b.till.x - b.fran.x, dz = b.till.z - b.fran.z;
+    const len = Math.hypot(dx, dz) || 1;
+    b.t += (b.fart * dt) / len;
+
+    if(b.t >= 1){
+      // Välj nästa gata: helst rakt fram, aldrig vända om det finns val
+      const kurs = Math.atan2(dx, dz);
+      let bast = null, bastDiff = 9;
+      for(const u of b.till.ut){
+        if(u.till === b.fran && b.till.ut.length > 1) continue;
+        const d = riktningsskillnad(
+          Math.atan2(u.till.x - b.till.x, u.till.z - b.till.z) * 180/Math.PI,
+          kurs * 180/Math.PI);
+        const brus = d + Math.random()*40;
+        if(brus < bastDiff*60 || !bast){ bast = u; bastDiff = brus/60; }
+      }
+      if(!bast){ b.t = 1; continue; }
+      b.fran = b.till; b.till = bast.till; b.seg = bast.seg; b.t = 0;
+      b.fart = bast.seg.grans/3.6 * (0.75 + Math.random()*0.2);
+      continue;
+    }
+
+    const kurs = Math.atan2(dx, dz);
+    // Håll till höger i färdriktningen, som man ska
+    const sido = (b.seg.halvbredd * 0.5);
+    b.x = b.fran.x + dx*b.t + Math.cos(kurs)*sido;
+    b.z = b.fran.z + dz*b.t - Math.sin(kurs)*sido;
+    b.kurs = kurs;
+    b.mesh.position.set(b.x, 0, b.z);
+    b.mesh.rotation.y = kurs;
+  }
+
+  // Byt ut bilar som hamnat för långt bort
+  for(let i = trafik.length - 1; i >= 0; i--){
+    if(Math.hypot(trafik[i].x - korning.x, trafik[i].z - korning.z) > 480){
+      scen.remove(trafik[i].mesh);
+      trafik.splice(i, 1);
+    }
+  }
+  while(trafik.length < TRAFIKANTAL){
+    const n = nyTrafikbil(korning.x, korning.z);
+    if(!n) break;
+    trafik.push(n);
+  }
 }
 
 /* ═══ Bilen ═══ */
@@ -839,6 +951,83 @@ function aterstall(){
   }
 }
 
+/* ═══ Bedömning ═══
+   Vägnätet vet vilken gata som är störst, var skyltarna står och var de
+   andra bilarna är. Alltså kan appen avgöra om du faktiskt körde rätt,
+   inte bara fråga om du vet regeln. */
+const REGLER = {
+  fortkorning:  { text:"För fort", regel:"Trafikförordningen 3 kap. 17 §" },
+  felSida:      { text:"Fel sida av vägen", regel:"Trafikförordningen 3 kap. 7 §" },
+  vajning:      { text:"Väjningsplikt — du körde ut framför en bil",
+                  regel:"Trafikförordningen 3 kap. 21 §" },
+  overgang:     { text:"För fort vid övergångsställe",
+                  regel:"Trafikförordningen 3 kap. 15 § p. 3" },
+  utanfor:      { text:"Utanför vägbanan", regel:"" }
+};
+
+function anmark(typ){
+  const nu = performance.now();
+  if(nu - (senasteAnmarkning[typ] || -9999) < 6000) return;   // inte spamma
+  senasteAnmarkning[typ] = nu;
+  anmarkningar.push({ typ, tid:nu });
+  const r = REGLER[typ];
+  $("anm").textContent = r.text + (r.regel ? " · " + r.regel : "");
+  $("anm").dataset.pa = "true";
+  clearTimeout(anmTimer);
+  anmTimer = setTimeout(() => { $("anm").dataset.pa = "false"; }, 4500);
+  $("anmrakning").textContent = anmarkningar.length;
+}
+
+/* Signerat sidoläge: positivt = höger om mittlinjen sett i färdriktningen */
+function sidolage(seg){
+  const dx = seg.bx - seg.ax, dz = seg.bz - seg.az;
+  const len = Math.hypot(dx, dz) || 1;
+  const ux = dx/len, uz = dz/len;
+  const vx = korning.x - seg.ax, vz = korning.z - seg.az;
+  const sida = vx*uz - vz*ux;                       // kryssprodukt i planet
+  const medstroms = (Math.sin(korning.kurs)*ux + Math.cos(korning.kurs)*uz) > 0;
+  return medstroms ? sida : -sida;
+}
+
+function bedom(dt, nara){
+  if(!nara || !nara.seg) return;
+  const kmh = Math.abs(korning.fart) * 3.6;
+  const seg = nara.seg;
+
+  // Fortkörning, men bara om det hållit i sig
+  if(kmh > seg.grans + 6) tidFortkorning += dt; else tidFortkorning = 0;
+  if(tidFortkorning > 1.8){ anmark("fortkorning"); tidFortkorning = 0; }
+
+  // Fel sida — gäller bara tvåfiliga vägar och när man faktiskt rör sig
+  if(kmh > 12 && !utanforVag && seg.halvbredd >= 2.6){
+    if(sidolage(seg) < -0.9) tidFelSida += dt; else tidFelSida = 0;
+    if(tidFelSida > 1.5){ anmark("felSida"); tidFelSida = 0; }
+  } else tidFelSida = 0;
+
+  // Väjningsplikt: just nu kom du från en mindre gata ut på en större
+  if(seg.stor && forraSegStor === false && kmh > 4){
+    for(const b of trafik){
+      const d = Math.hypot(b.x - korning.x, b.z - korning.z);
+      if(d > 42) continue;
+      // Kommer bilen mot dig, och hinner den fram?
+      const mot = Math.hypot(b.x + Math.sin(b.kurs)*b.fart*2 - korning.x,
+                             b.z + Math.cos(b.kurs)*b.fart*2 - korning.z);
+      if(mot < d){ anmark("vajning"); break; }
+    }
+  }
+  forraSegStor = seg.stor;
+
+  // Övergångsställe: håll låg fart
+  for(const s of skyltlista){
+    if(s.typ !== "crossing") continue;
+    if(Math.hypot(s.x - korning.x, s.z - korning.z) < 16 && kmh > 32){
+      anmark("overgang"); break;
+    }
+  }
+
+  if(utanforVag && kmh > 10) anmark("utanfor");
+}
+
 /* ═══ Uppdatering per bildruta ═══ */
 function uppdatera(dt){
   const gas    = tangent["w"] || tangent["arrowup"]    || pekreglage.gas;
@@ -902,6 +1091,8 @@ function uppdatera(dt){
       s.mesh.lookAt(kamera.position);
   });
 
+  flyttaTrafik(dt);
+
   // Var är vi?
   const n = narmasteVag(korning.x, korning.z);
   if(n.seg){
@@ -910,6 +1101,7 @@ function uppdatera(dt){
     aktuellGata = n.seg.namn;
   } else utanforVag = true;
 
+  bedom(dt, n);
   ritaHUD();
 }
 
@@ -959,8 +1151,14 @@ async function starta(element){
   initScen();
   const antal = byggVarld(element);
   if(!antal) throw new Error("Inga körbara vägar hittades i området");
+  const noder = byggGraf();
+  logg("Vägnät: " + noder + " noder — startar trafik");
   bil = byggBil();
   aterstall();
+  for(let i = 0; i < TRAFIKANTAL; i++){
+    const t = nyTrafikbil(korning.x, korning.z);
+    if(t) trafik.push(t);
+  }
   byggKompass();
   framdrift(1);
 
