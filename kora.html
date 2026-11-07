@@ -1,0 +1,878 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Körkort · Körvärlden — Söderort</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --asfalt:#22262b; --asfalt-djup:#191c20; --panel:#2e343b; --panel-ljus:#3a424a;
+  --linje:#47505a; --vit:#f2f3ef; --dov:#8c949e;
+  --gul:#ffc300; --bla:#0b5aa2; --rod:#c8102e; --gron:#2f8f5b;
+  --display:"Barlow Condensed","Arial Narrow",sans-serif;
+  --brod:"Barlow",system-ui,sans-serif; --mono:"IBM Plex Mono",ui-monospace,monospace;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;overflow:hidden;overscroll-behavior:none}
+body{background:var(--asfalt-djup);color:var(--vit);font-family:var(--brod);
+  -webkit-font-smoothing:antialiased;touch-action:none;
+  padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+button{font:inherit;color:inherit;cursor:pointer}
+:focus-visible{outline:2px solid var(--gul);outline-offset:2px}
+canvas{display:block}
+
+/* ── Laddning ─────────────────────────────────────── */
+.start{position:fixed;inset:0;z-index:50;display:grid;place-content:center;justify-items:center;
+  gap:16px;padding:26px;text-align:center;background:var(--asfalt-djup)}
+.start h1{font-family:var(--display);font-weight:700;font-size:30px;letter-spacing:.08em;
+  text-transform:uppercase;margin:0}
+.start h1 small{display:block;font-family:var(--mono);font-size:10px;color:var(--gul);
+  letter-spacing:.2em;margin-top:5px}
+.start p{margin:0;color:var(--dov);max-width:44ch;line-height:1.6;font-size:14px}
+.triangel{width:0;height:0;border-left:28px solid transparent;border-right:28px solid transparent;
+  border-bottom:48px solid var(--gul);position:relative}
+.triangel::after{content:"!";position:absolute;left:-6px;top:21px;font-family:var(--display);
+  font-weight:700;font-size:24px;color:#191c20}
+.valj{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;max-width:430px}
+.omr{background:var(--panel);border:1px solid transparent;border-radius:14px;padding:7px 15px;
+  font-family:var(--display);font-weight:600;font-size:15px;letter-spacing:.03em}
+.omr:hover{background:var(--panel-ljus)}
+.omr[aria-pressed="true"]{background:var(--gul);color:#191c20}
+.knapp{background:var(--panel-ljus);border:1px solid var(--linje);border-radius:3px;
+  padding:9px 20px;font-family:var(--display);font-weight:600;font-size:16px;
+  letter-spacing:.06em;text-transform:uppercase}
+.knapp:hover{background:#48525c}
+.knapp--gul{background:var(--gul);color:#191c20;border-color:var(--gul)}
+.knapp--gul:hover{background:#ffd034}
+.knapp:disabled{opacity:.45;cursor:not-allowed}
+.matare{width:min(330px,80vw);height:5px;border-radius:3px;background:var(--panel);overflow:hidden}
+.matare i{display:block;height:100%;width:0;background:var(--gul);transition:width .3s ease}
+.logg{font-family:var(--mono);font-size:11px;color:var(--dov);min-height:17px;
+  max-width:min(520px,88vw);line-height:1.65;white-space:pre-line;text-align:center}
+.knapprad{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+.filval{font-size:12px;color:var(--dov);display:flex;gap:8px;align-items:center;flex-wrap:wrap;
+  justify-content:center}
+.filval input{font-size:11px;color:var(--dov);max-width:200px}
+.inmatning{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);
+  font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--dov);background:rgba(25,28,32,.8);border:1px solid var(--linje);
+  border-radius:3px;padding:4px 11px;white-space:nowrap}
+.inmatning[data-aktiv="true"]{color:var(--gul);border-color:var(--gul)}
+.spara{position:absolute;right:14px;top:50px;background:rgba(25,28,32,.84);
+  border:1px solid var(--linje);border-radius:3px;padding:6px 11px;
+  font-family:var(--display);font-weight:600;font-size:13px;letter-spacing:.05em;
+  text-transform:uppercase;pointer-events:auto}
+
+/* ── HUD ──────────────────────────────────────────── */
+.hud{position:fixed;inset:0;z-index:20;pointer-events:none}
+.matartavla{position:absolute;left:14px;bottom:14px;display:flex;align-items:flex-end;gap:12px}
+.fart{font-family:var(--display);font-weight:700;font-size:54px;line-height:.85;letter-spacing:.02em;
+  text-shadow:0 2px 14px rgba(0,0,0,.85)}
+.fart span{font-family:var(--mono);font-size:11px;font-weight:400;letter-spacing:.14em;color:var(--dov)}
+.skylt{width:52px;height:52px;border-radius:50%;background:#fff;border:5px solid var(--rod);
+  display:grid;place-content:center;font-family:var(--display);font-weight:700;font-size:21px;
+  color:#111;box-shadow:0 3px 14px rgba(0,0,0,.6)}
+.gata{position:absolute;left:14px;top:14px;background:rgba(25,28,32,.84);border:1px solid var(--linje);
+  border-radius:3px;padding:6px 12px;font-family:var(--display);font-weight:600;font-size:17px;
+  letter-spacing:.03em;max-width:62vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.notis{position:absolute;left:50%;top:62px;transform:translateX(-50%);
+  background:rgba(200,16,46,.93);border-radius:3px;padding:7px 15px;font-size:13.5px;
+  white-space:nowrap;opacity:0;transition:opacity .2s ease}
+.notis[data-pa="true"]{opacity:1}
+.kompassband{position:absolute;top:0;left:0;right:0;height:38px;overflow:hidden;
+  background:linear-gradient(to bottom,rgba(25,28,32,.8),rgba(25,28,32,0));
+  -webkit-mask-image:linear-gradient(to right,transparent,#000 18%,#000 82%,transparent);
+          mask-image:linear-gradient(to right,transparent,#000 18%,#000 82%,transparent)}
+.kompassband b{position:absolute;top:0;left:0;height:100%;font-weight:400}
+.kompassband i{position:absolute;top:8px;width:1px;height:6px;background:var(--linje)}
+.kompassband i.stor{height:11px;background:var(--dov)}
+.kompassband u{position:absolute;top:19px;transform:translateX(-50%);text-decoration:none;
+  font-family:var(--display);font-weight:600;font-size:12px;letter-spacing:.1em}
+.kompassband em{position:absolute;top:0;left:50%;transform:translateX(-50%);width:0;height:0;
+  border-left:5px solid transparent;border-right:5px solid transparent;border-top:8px solid var(--gul)}
+
+/* Reglage */
+.reglage{position:absolute;right:14px;bottom:14px;display:grid;gap:9px;
+  grid-template-columns:74px 74px;pointer-events:auto}
+.pedal{height:74px;border-radius:9px;background:rgba(46,52,59,.9);border:1px solid var(--linje);
+  font-family:var(--display);font-weight:700;font-size:24px;display:grid;place-content:center;
+  user-select:none;-webkit-user-select:none}
+.pedal:active,.pedal[data-ned="true"]{background:var(--gul);color:#191c20}
+.pedal--gas{grid-column:2;background:rgba(47,143,91,.4)}
+.pedal--broms{grid-column:1;background:rgba(200,16,46,.35)}
+.hjalp{position:absolute;right:14px;top:50px;background:rgba(25,28,32,.84);
+  border:1px solid var(--linje);border-radius:3px;padding:7px 11px;
+  font-family:var(--mono);font-size:10.5px;color:var(--dov);line-height:1.65;text-align:right}
+@media (max-width:720px){
+  .hjalp{display:none}
+  .fart{font-size:40px}
+  .reglage{grid-template-columns:84px 84px;gap:11px;right:11px;bottom:11px}
+  .pedal{height:84px;font-size:28px}
+  .gata{font-size:15px;max-width:52vw}
+  .inmatning{bottom:auto;top:46px;font-size:9.5px}
+  .spara{font-size:11px;padding:5px 9px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+<div class="start" id="start">
+  <div class="triangel"></div>
+  <h1>Körvärlden<small>Söderort · byggd av OpenStreetMap</small></h1>
+  <p>Världen byggs av riktiga vägdata. Alla gator, hastighetsgränser, väjningsplikter och
+     övergångsställen kommer från OpenStreetMap — inte från foton. Därför finns inga luckor.</p>
+  <div class="valj" id="valj"></div>
+  <div class="knapprad">
+    <button class="knapp knapp--gul" id="bygg">Bygg världen</button>
+    <button class="knapp" id="testvarld">Övningsområde</button>
+  </div>
+  <div class="matare"><i id="framdrift"></i></div>
+  <div class="logg" id="logg">Välj område och tryck Bygg världen.</div>
+  <label class="filval">Har du en sparad .json? <input type="file" id="fil" accept=".json,application/json"></label>
+</div>
+
+<div class="hud" id="hud" hidden>
+  <div class="kompassband" id="kompassband"><b id="kband"></b><em></em></div>
+  <div class="gata" id="gata">—</div>
+  <div class="notis" id="notis" data-pa="false">—</div>
+  <div class="matartavla">
+    <div class="fart"><span id="farttext">0</span><br><span>KM/H</span></div>
+    <div class="skylt" id="granssskylt">50</div>
+  </div>
+  <button class="spara" id="spara">Spara världen</button>
+  <div class="inmatning" id="inmatning">ingen inmatning</div>
+  <div class="hjalp" style="top:88px">
+    W / ↑ gas<br>S / ↓ broms och back<br>A D / ← → styr<br>Mellanslag handbroms<br>R återställ
+  </div>
+  <div class="reglage">
+    <div class="pedal pedal--broms" id="p-broms">▼</div>
+    <div class="pedal pedal--gas" id="p-gas">▲</div>
+    <div class="pedal" id="p-vanster">◀</div>
+    <div class="pedal" id="p-hoger">▶</div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+"use strict";
+
+/* ═══════════════════════════════════════════════════════════
+   OMRÅDEN — mittpunkter i Söderort. halv = halva sidan i meter.
+   ═══════════════════════════════════════════════════════════ */
+const OMRADEN = [
+  { namn:"Farsta",      lat:59.2440, lng:18.0930, halv:1100 },
+  { namn:"Hökarängen",  lat:59.2565, lng:18.0820, halv:1000 },
+  { namn:"Gubbängen",   lat:59.2670, lng:18.0800, halv:1000 },
+  { namn:"Sköndal",     lat:59.2530, lng:18.1160, halv:1000 },
+  { namn:"Högdalen",    lat:59.2635, lng:18.0435, halv:1000 },
+  { namn:"Bandhagen",   lat:59.2690, lng:18.0490, halv:1000 },
+  { namn:"Skarpnäck",   lat:59.2665, lng:18.1330, halv:1000 },
+  { namn:"Enskede",     lat:59.2880, lng:18.0700, halv:1000 },
+  { namn:"Årsta",       lat:59.2985, lng:18.0455, halv:1000 }
+];
+
+/* Vägtyper: bredd i meter och om de är körbara */
+const VAGTYP = {
+  motorway:{b:14,f:110}, trunk:{b:13,f:90}, primary:{b:11,f:70},
+  secondary:{b:9.5,f:60}, tertiary:{b:8,f:50}, unclassified:{b:6.5,f:50},
+  residential:{b:6.5,f:30}, living_street:{b:5,f:7}, service:{b:4,f:30},
+  pedestrian:{b:5,f:7},
+  motorway_link:{b:7,f:70}, trunk_link:{b:7,f:60}, primary_link:{b:6.5,f:50},
+  secondary_link:{b:6.5,f:50}, tertiary_link:{b:6,f:40}
+};
+
+/* Servrar i tur och ordning. OSM:s egen wiki varnar för att huvudinstansen
+   (overpass-api.de) är överbelastad och ber användare välja alternativ, så den
+   ligger sist. De tre första välkomnar uttryckligen användning utan nyckel. */
+const SERVRAR = [
+  { namn:"private.coffee", url:"https://overpass.private.coffee/api/interpreter" },
+  { namn:"dresel (Europa)", url:"https://ovp.dresel.systems/api/interpreter" },
+  { namn:"VK Maps",         url:"https://maps.mail.ru/osm/tools/overpass/api/interpreter" },
+  { namn:"overpass-api.de", url:"https://overpass-api.de/api/interpreter" }
+];
+const VADERSTRECK = ["N","NO","O","SO","S","SV","V","NV"];
+const $ = id => document.getElementById(id);
+
+let valtOmrade = OMRADEN[0];
+let scen, kamera, renderare, bil, klocka;
+let vagsegment = [], rutnat = new Map(), RUTA = 60;
+let skyltlista = [];
+let origo = null;
+let korning = { x:0, z:0, kurs:0, fart:0, ratt:0 };
+let tangent = {}, pekreglage = { gas:false, broms:false, vanster:false, hoger:false };
+let aktuellGrans = 50, aktuellGata = "—", utanforVag = false;
+
+function logg(t){ $("logg").textContent = t; }
+function framdrift(p){ $("framdrift").style.width = (p*100) + "%"; }
+
+/* ═══ Koordinater: lat/lng → lokala meter ═══ */
+function tillMeter(lat, lng){
+  const k = Math.cos(origo.lat * Math.PI/180);
+  return { x:(lng - origo.lng) * 111320 * k, z:-(lat - origo.lat) * 111320 };
+}
+
+/* ═══ Hämta data från Overpass ═══ */
+function bbox(o){
+  const dLat = o.halv / 111320;
+  const dLng = o.halv / (111320 * Math.cos(o.lat * Math.PI/180));
+  return `${(o.lat-dLat).toFixed(5)},${(o.lng-dLng).toFixed(5)},${(o.lat+dLat).toFixed(5)},${(o.lng+dLng).toFixed(5)}`;
+}
+
+function fraga(o){
+  const bb = bbox(o);
+  const typer = Object.keys(VAGTYP).join("|");
+  return `[out:json][timeout:90];
+(
+  way["highway"~"^(${typer})$"](${bb});
+  node["highway"~"^(give_way|stop|traffic_signals|crossing)$"](${bb});
+  way["building"](${bb});
+);
+out geom;`;
+}
+
+async function hamtaOSM(o){
+  const q = fraga(o);
+  let natverksfel = 0, sistaFel = null;
+
+  for(let i = 0; i < SERVRAR.length; i++){
+    const s = SERVRAR[i];
+    logg(`Hämtar från ${s.namn}… (${i+1}/${SERVRAR.length})`);
+    try{
+      const svar = await fetch(s.url, {
+        method:"POST",
+        headers:{ "Content-Type":"application/x-www-form-urlencoded" },
+        body:"data=" + encodeURIComponent(q)
+      });
+      if(!svar.ok){
+        sistaFel = `${s.namn} svarade ${svar.status}` +
+          (svar.status === 429 || svar.status === 504 ? " (överbelastad)" : "");
+        continue;
+      }
+      const d = await svar.json();
+      if(!d.elements || !d.elements.length){
+        sistaFel = `${s.namn} returnerade tomt`;
+        continue;
+      }
+      return d.elements;
+    }catch(f){
+      // TypeError från fetch = anropet nådde aldrig nätet
+      if(f instanceof TypeError) natverksfel++;
+      sistaFel = `${s.namn}: ${f.message}`;
+    }
+  }
+
+  if(natverksfel === SERVRAR.length){
+    const viaFil = location.protocol === "file:";
+    throw new Error(
+      "Webbläsaren blockerade alla anrop innan de nådde nätet.\n" +
+      (viaFil
+        ? "Du har öppnat filen direkt från hårddisken (file://). Webbläsare tillåter inte externa anrop då. Starta en liten webbserver: python3 -m http.server 8000 — öppna sedan http://localhost:8000/kora.html"
+        : "Sidan körs troligen i en sandlåda som spärrar externa anrop, till exempel en förhandsvisning. Ladda ner filen och kör den via en lokal webbserver eller GitHub Pages.") +
+      "\nTryck Övningsområde för att köra utan nätet — det fungerar alltid.");
+  }
+  throw new Error((sistaFel || "okänt fel") + ". Alla servrar nekade. Prova igen om en minut.");
+}
+
+/* ═══ Testvärld — ett påhittat rutnät, helt utan nätet ═══
+   Finns för att kunna skilja "nätet är blockerat" från "3D-motorn är trasig". */
+/* ═══ Övningsområdet ═══
+   Ett påhittat men genomtänkt bostadsområde i svensk förortsstil. Byggs i
+   meter och räknas om till koordinater, så det fungerar var som helst.
+   Till skillnad från riktig OSM-data kan vi placera situationerna själva:
+   en cirkulationsplats, väjningsplikt, stopplikt, oskyltade korsningar där
+   högerregeln gäller, och övergångsställen vid skolan. */
+function ovningsomrade(){
+  const el = [];
+  const k = Math.cos(valtOmrade.lat * Math.PI/180);
+  const P = (x, z) => ({ lat: valtOmrade.lat - z/111320,
+                         lon: valtOmrade.lng + x/(111320*k) });
+  const vag = (namn, typ, fart, punkter, extra={}) =>
+    el.push({ type:"way", tags:Object.assign({ highway:typ, name:namn,
+      maxspeed:String(fart) }, extra), geometry:punkter.map(p => P(p[0], p[1])) });
+  const skylt = (typ, x, z) =>
+    el.push({ type:"node", tags:{ highway:typ }, ...P(x, z) });
+
+  // Huvudgatan, nord–syd, 50 km/h
+  vag("Söderleden", "secondary", 50, [[0,-430],[0,-120],[0,0],[0,160],[0,420]]);
+
+  // Cirkulationsplats i söder — tolv punkter ger en mjuk cirkel
+  const r = 19, cz = 470, ring = [];
+  for(let i = 0; i <= 12; i++){
+    const a = i/12 * Math.PI * 2;
+    ring.push([Math.sin(a)*r, cz + Math.cos(a)*r]);
+  }
+  vag("Söderleden", "tertiary", 30, ring, { junction:"roundabout", oneway:"yes" });
+  vag("Söderleden", "secondary", 50, [[0,420],[0,cz-r]]);
+  vag("Farstavägen", "secondary", 50, [[r,cz],[260,cz]]);
+  vag("Ekängsvägen", "secondary", 50, [[0,cz+r],[0,cz+200]]);
+
+  // Bostadsgator väster om huvudgatan, 30 km/h
+  [-200, 0, 200].forEach((z, i) => {
+    vag("Björkstigen " + (i+1), "residential", 30, [[0,z],[-130,z],[-290,z]]);
+  });
+  vag("Lönnvägen", "residential", 30, [[-130,-260],[-130,-200],[-130,0],[-130,200],[-130,260]]);
+  vag("Aspstigen", "residential", 30, [[-290,-240],[-290,0],[-290,240]]);
+
+  // Väjningsplikt där bostadsgatorna möter huvudgatan
+  [-200, 0, 200].forEach(z => skylt("give_way", -13, z - 7));
+  // Stopplikt i den skymda korsningen
+  skylt("stop", -277, -8);
+  // Korsningarna mellan Lönnvägen och Björkstigen lämnas oskyltade — där
+  // gäller högerregeln, vilket är precis vad som ska övas.
+
+  // Skolan: övergångsställen och en 30-sträcka
+  vag("Skolgatan", "residential", 30, [[0,-120],[180,-120],[320,-120]]);
+  skylt("crossing", 60, -120);
+  skylt("crossing", 140, -120);
+  skylt("traffic_signals", 8, -112);
+
+  // Byggnader längs gatorna
+  const hus = (x, z, b, d, van) => el.push({ type:"way",
+    tags:{ building:"yes", "building:levels":String(van) },
+    geometry:[P(x,z), P(x+b,z), P(x+b,z+d), P(x,z+d), P(x,z)] });
+  for(let i = 0; i < 6; i++){
+    hus(-110, -250 + i*90, 44, 48, 3 + i % 3);
+    hus(-270, -230 + i*90, 40, 44, 2 + i % 3);
+    hus(28, -330 + i*110, 58, 60, 4 + i % 4);
+  }
+  hus(190, -210, 120, 70, 2);          // skolan
+  hus(60, 300, 90, 80, 6);
+  hus(-90, 330, 70, 70, 5);
+
+  return el;
+}
+
+
+/* ═══ Bygg världen ═══ */
+function byggVarld(element){
+  const vagar = [], byggnader = [], noder = [];
+  element.forEach(e => {
+    if(e.type === "node" && e.tags) noder.push(e);
+    else if(e.type === "way" && e.geometry){
+      if(e.tags && e.tags.highway && VAGTYP[e.tags.highway]) vagar.push(e);
+      else if(e.tags && e.tags.building) byggnader.push(e);
+    }
+  });
+  logg(`${vagar.length} vägar, ${byggnader.length} byggnader, ${noder.length} skyltpunkter`);
+
+  byggMark();
+  byggVagar(vagar);
+  byggByggnader(byggnader);
+  byggSkyltar(noder);
+  return vagar.length;
+}
+
+function byggMark(){
+  const g = new THREE.PlaneGeometry(6000, 6000);
+  const m = new THREE.MeshLambertMaterial({ color:0x2e3a2c });
+  const mark = new THREE.Mesh(g, m);
+  mark.rotation.x = -Math.PI/2;
+  mark.position.y = -0.06;
+  scen.add(mark);
+}
+
+function byggVagar(vagar){
+  const pos = [], mitt = [];
+  vagar.forEach(v => {
+    const typ = VAGTYP[v.tags.highway];
+    const halvbredd = typ.b / 2;
+    const grans = tolkaFart(v.tags, typ.f);
+    const namn = v.tags.name || v.tags.highway;
+    const punkter = v.geometry.map(p => tillMeter(p.lat, p.lon));
+
+    for(let i = 0; i < punkter.length - 1; i++){
+      const a = punkter[i], b = punkter[i+1];
+      const dx = b.x - a.x, dz = b.z - a.z;
+      const len = Math.hypot(dx, dz);
+      if(len < 0.4) continue;
+      const nx = -dz/len * halvbredd, nz = dx/len * halvbredd;
+
+      pos.push(a.x+nx,0,a.z+nz,  a.x-nx,0,a.z-nz,  b.x-nx,0,b.z-nz);
+      pos.push(a.x+nx,0,a.z+nz,  b.x-nx,0,b.z-nz,  b.x+nx,0,b.z+nz);
+
+      // mittlinje på större vägar
+      if(typ.b >= 8){
+        const m = 0.14;
+        const mx = -dz/len*m, mz = dx/len*m;
+        mitt.push(a.x+mx,0.02,a.z+mz, a.x-mx,0.02,a.z-mz, b.x-mx,0.02,b.z-mz);
+        mitt.push(a.x+mx,0.02,a.z+mz, b.x-mx,0.02,b.z-mz, b.x+mx,0.02,b.z+mz);
+      }
+
+      const seg = { ax:a.x, az:a.z, bx:b.x, bz:b.z, halvbredd, grans, namn };
+      vagsegment.push(seg);
+      registreraIRutnat(seg);
+    }
+  });
+
+  lagg(pos, 0x3b4046, 0);
+  if(mitt.length) lagg(mitt, 0xc9c6b4, 0);
+}
+
+function lagg(pos, farg, y){
+  const g = new THREE.BufferGeometry();
+  g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+  g.computeVertexNormals();
+  const m = new THREE.MeshLambertMaterial({ color:farg, side:THREE.DoubleSide });
+  const mesh = new THREE.Mesh(g, m);
+  mesh.position.y = y;
+  scen.add(mesh);
+}
+
+function tolkaFart(tags, standard){
+  if(!tags.maxspeed) return standard;
+  const n = parseInt(String(tags.maxspeed).replace(/[^0-9]/g, ""), 10);
+  return (n >= 5 && n <= 130) ? n : standard;
+}
+
+function byggByggnader(byggnader){
+  const grupp = new THREE.Group();
+  const farger = [0x5a5048, 0x6b5d52, 0x4f4a46, 0x6a6258, 0x574f49];
+  byggnader.slice(0, 1800).forEach((b, i) => {
+    const p = b.geometry.map(q => tillMeter(q.lat, q.lon));
+    if(p.length < 4) return;
+    const form = new THREE.Shape();
+    form.moveTo(p[0].x, p[0].z);
+    for(let j = 1; j < p.length; j++) form.lineTo(p[j].x, p[j].z);
+    let h = 9;
+    if(b.tags.height) h = parseFloat(b.tags.height) || 9;
+    else if(b.tags["building:levels"]) h = (parseFloat(b.tags["building:levels"]) || 3) * 3.1;
+    let geo;
+    try{ geo = new THREE.ExtrudeGeometry(form, { depth:h, bevelEnabled:false }); }
+    catch(e){ return; }
+    geo.rotateX(Math.PI/2);
+    const mesh = new THREE.Mesh(geo,
+      new THREE.MeshLambertMaterial({ color:farger[i % farger.length] }));
+    mesh.position.y = h;
+    grupp.add(mesh);
+  });
+  scen.add(grupp);
+}
+
+/* ═══ Skyltar ═══ */
+function skyltTextur(typ){
+  const c = document.createElement("canvas");
+  c.width = c.height = 128;
+  const g = c.getContext("2d");
+  g.clearRect(0,0,128,128);
+  if(typ === "give_way"){
+    g.fillStyle = "#c8102e"; g.beginPath();
+    g.moveTo(6,16); g.lineTo(122,16); g.lineTo(64,120); g.closePath(); g.fill();
+    g.fillStyle = "#ffd94a"; g.beginPath();
+    g.moveTo(26,30); g.lineTo(102,30); g.lineTo(64,98); g.closePath(); g.fill();
+  } else if(typ === "stop"){
+    g.fillStyle = "#c8102e"; g.beginPath();
+    for(let i = 0; i < 8; i++){
+      const a = Math.PI/8 + i*Math.PI/4;
+      const x = 64 + 58*Math.cos(a), y = 64 + 58*Math.sin(a);
+      i ? g.lineTo(x,y) : g.moveTo(x,y);
+    }
+    g.closePath(); g.fill();
+    g.fillStyle = "#fff"; g.font = "bold 36px sans-serif";
+    g.textAlign = "center"; g.textBaseline = "middle";
+    g.fillText("STOPP", 64, 66);
+  } else if(typ === "crossing"){
+    g.fillStyle = "#0b5aa2"; g.fillRect(14,14,100,100);
+    g.fillStyle = "#fff";
+    for(let i = 0; i < 4; i++) g.fillRect(34 + i*16, 40, 9, 52);
+  } else {
+    g.fillStyle = "#2a2a2a"; g.fillRect(44,8,40,112);
+    [["#c8102e",30],["#ffc300",62],["#2f8f5b",94]].forEach(([f,y]) => {
+      g.fillStyle = f; g.beginPath(); g.arc(64,y,13,0,7); g.fill();
+    });
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.needsUpdate = true;
+  return t;
+}
+
+function byggSkyltar(noder){
+  const texturer = {};
+  ["give_way","stop","crossing","traffic_signals"].forEach(t => texturer[t] = skyltTextur(t));
+  const stolpeGeo = new THREE.CylinderGeometry(0.06, 0.06, 2.3, 6);
+  const stolpeMat = new THREE.MeshLambertMaterial({ color:0x9aa0a6 });
+  const skivaGeo = new THREE.PlaneGeometry(1.0, 1.0);
+
+  noder.slice(0, 900).forEach(n => {
+    const typ = n.tags.highway;
+    if(!texturer[typ]) return;
+    const p = tillMeter(n.lat, n.lon);
+    const grupp = new THREE.Group();
+    const stolpe = new THREE.Mesh(stolpeGeo, stolpeMat);
+    stolpe.position.y = 1.15;
+    grupp.add(stolpe);
+    const skiva = new THREE.Mesh(skivaGeo, new THREE.MeshBasicMaterial({
+      map:texturer[typ], transparent:true, side:THREE.DoubleSide }));
+    skiva.position.y = 2.5;
+    grupp.add(skiva);
+    grupp.position.set(p.x, 0, p.z);
+    scen.add(grupp);
+    skyltlista.push({ x:p.x, z:p.z, typ, mesh:skiva });
+  });
+}
+
+/* ═══ Rutnät för snabb vägsökning ═══ */
+function registreraIRutnat(seg){
+  const minX = Math.min(seg.ax, seg.bx), maxX = Math.max(seg.ax, seg.bx);
+  const minZ = Math.min(seg.az, seg.bz), maxZ = Math.max(seg.az, seg.bz);
+  for(let i = Math.floor(minX/RUTA); i <= Math.floor(maxX/RUTA); i++)
+    for(let j = Math.floor(minZ/RUTA); j <= Math.floor(maxZ/RUTA); j++){
+      const n = i + ":" + j;
+      if(!rutnat.has(n)) rutnat.set(n, []);
+      rutnat.get(n).push(seg);
+    }
+}
+
+function avstandTillSegment(x, z, s){
+  const dx = s.bx - s.ax, dz = s.bz - s.az;
+  const l2 = dx*dx + dz*dz;
+  let t = l2 ? ((x - s.ax)*dx + (z - s.az)*dz) / l2 : 0;
+  t = Math.max(0, Math.min(1, t));
+  return Math.hypot(x - (s.ax + t*dx), z - (s.az + t*dz));
+}
+
+function narmasteVag(x, z){
+  const i = Math.floor(x/RUTA), j = Math.floor(z/RUTA);
+  let bast = null, bastAvst = Infinity;
+  for(let a = -1; a <= 1; a++) for(let b = -1; b <= 1; b++){
+    const lista = rutnat.get((i+a) + ":" + (j+b));
+    if(!lista) continue;
+    for(const s of lista){
+      const d = avstandTillSegment(x, z, s);
+      if(d < bastAvst){ bastAvst = d; bast = s; }
+    }
+  }
+  return { seg:bast, avstand:bastAvst };
+}
+
+/* ═══ Bilen ═══ */
+function byggBil(){
+  const g = new THREE.Group();
+  const kaross = new THREE.Mesh(
+    new THREE.BoxGeometry(1.8, 0.72, 4.3),
+    new THREE.MeshLambertMaterial({ color:0xd6d9dd }));
+  kaross.position.y = 0.72;
+  g.add(kaross);
+  const tak = new THREE.Mesh(
+    new THREE.BoxGeometry(1.66, 0.62, 2.25),
+    new THREE.MeshLambertMaterial({ color:0x9fa5ab }));
+  tak.position.set(0, 1.37, -0.18);
+  g.add(tak);
+  const hjulGeo = new THREE.CylinderGeometry(0.34, 0.34, 0.24, 12);
+  hjulGeo.rotateZ(Math.PI/2);
+  const hjulMat = new THREE.MeshLambertMaterial({ color:0x1b1d20 });
+  [[-0.92,1.42],[0.92,1.42],[-0.92,-1.42],[0.92,-1.42]].forEach(([x,z]) => {
+    const h = new THREE.Mesh(hjulGeo, hjulMat);
+    h.position.set(x, 0.34, z);
+    g.add(h);
+  });
+  [[-0.6,2.16],[0.6,2.16]].forEach(([x,z]) => {
+    const l = new THREE.Mesh(new THREE.BoxGeometry(0.3,0.16,0.07),
+      new THREE.MeshBasicMaterial({ color:0xfff2c0 }));
+    l.position.set(x, 0.78, z);
+    g.add(l);
+  });
+  scen.add(g);
+  return g;
+}
+
+/* ═══ Kompassband ═══ */
+function byggKompass(){
+  const b = $("kband");
+  let h = "";
+  for(let g = -360; g <= 720; g += 15){
+    const stor = g % 45 === 0;
+    h += `<i class="${stor?"stor":""}" style="left:${g*3}px"></i>`;
+    if(stor) h += `<u style="left:${g*3}px">${VADERSTRECK[(((g/45)%8)+8)%8]}</u>`;
+  }
+  b.innerHTML = h;
+}
+function ritaKompass(){
+  const bredd = $("kompassband").clientWidth;
+  const grader = (korning.kurs * 180/Math.PI + 360) % 360;
+  $("kband").style.transform = `translateX(${bredd/2 - grader*3}px)`;
+}
+
+/* ═══ Styrning ═══ */
+addEventListener("keydown", e => {
+  tangent[e.key.toLowerCase()] = true;
+  senasteKalla = "tangentbord";
+  if(["arrowup","arrowdown","arrowleft","arrowright"," "].includes(e.key.toLowerCase()))
+    e.preventDefault();
+  if(e.key.toLowerCase() === "r") aterstall();
+});
+addEventListener("keyup", e => { tangent[e.key.toLowerCase()] = false; });
+
+/* Pedalerna.
+   Tre saker som gick fel i första versionen:
+   1. "pointerleave" låg bland släpp-händelserna. Pedalen är 62 px, så minsta
+      musrörelse under klicket släppte gasen igen.
+   2. Utan pointer capture tappas händelserna om pekaren glider utanför.
+   3. Ett vanligt klick varar ~50 ms. Med realistisk acceleration ger det
+      0,15 km/h — alltså ser det ut som att knappen är trasig. Ett kort tryck
+      ger därför nu en gaspuls på 900 ms. Håller man kvar gäller hållet. */
+let senasteKalla = "–";
+function pedal(id, namn){
+  const el = $(id);
+  let start = 0, timer = null;
+  const satt = p => { pekreglage[namn] = p; el.dataset.ned = String(p); };
+
+  el.addEventListener("pointerdown", e => {
+    e.preventDefault();
+    clearTimeout(timer);
+    try{ el.setPointerCapture(e.pointerId); }catch(_){}
+    start = performance.now();
+    satt(true);
+    senasteKalla = "pekning";
+  });
+
+  const slapp = e => {
+    if(e && e.pointerId !== undefined){
+      try{ el.releasePointerCapture(e.pointerId); }catch(_){}
+    }
+    const haller = performance.now() - start;
+    if(haller < 250){
+      el.dataset.ned = "false";
+      timer = setTimeout(() => { pekreglage[namn] = false; }, 900 - haller);
+    } else satt(false);
+  };
+  ["pointerup","pointercancel","lostpointercapture"].forEach(h =>
+    el.addEventListener(h, slapp));
+}
+pedal("p-gas","gas"); pedal("p-broms","broms");
+pedal("p-vanster","vanster"); pedal("p-hoger","hoger");
+
+function aterstall(){
+  korning.fart = 0;
+  const s = vagsegment[0];
+  if(s){
+    korning.x = (s.ax + s.bx)/2;
+    korning.z = (s.az + s.bz)/2;
+    korning.kurs = Math.atan2(s.bx - s.ax, s.bz - s.az);
+  }
+}
+
+/* ═══ Uppdatering per bildruta ═══ */
+function uppdatera(dt){
+  const gas    = tangent["w"] || tangent["arrowup"]    || pekreglage.gas;
+  const broms  = tangent["s"] || tangent["arrowdown"]  || pekreglage.broms;
+  const vanst  = tangent["a"] || tangent["arrowleft"]  || pekreglage.vanster;
+  const hoger  = tangent["d"] || tangent["arrowright"] || pekreglage.hoger;
+  const hand   = tangent[" "];
+
+  // Visa vad appen faktiskt uppfattar — gör det möjligt att se om problemet
+  // ligger i reglagen eller i fysiken.
+  const aktiva = [];
+  if(gas) aktiva.push("GAS");
+  if(broms) aktiva.push("BROMS");
+  if(vanst) aktiva.push("VÄNSTER");
+  if(hoger) aktiva.push("HÖGER");
+  if(hand) aktiva.push("HANDBROMS");
+  const ruta = $("inmatning");
+  ruta.textContent = aktiva.length ? aktiva.join(" · ") + "  (" + senasteKalla + ")"
+                                   : "ingen inmatning — klicka i rutan, tryck sedan W";
+  ruta.dataset.aktiv = String(aktiva.length > 0);
+
+  // Längsgående
+  // 2,6 m/s² ger 0–100 km/h på cirka 11 s, som en vanlig bil.
+  // Bromsen 8 m/s² motsvarar ungefär 0,8 g, en hård men verklig inbromsning.
+  const maxFart = 28;                       // m/s ≈ 100 km/h
+  const gaspadrag = Math.abs(korning.fart) < 8 ? 2.9 : 2.0;  // svagare på högre fart
+  if(gas)        korning.fart += gaspadrag * dt;
+  else if(broms) korning.fart -= 8.0 * dt;
+  else           korning.fart -= Math.sign(korning.fart) * 1.1 * dt;
+  if(hand)       korning.fart -= Math.sign(korning.fart) * 9 * dt;
+  if(utanforVag && korning.fart > 7) korning.fart -= 9 * dt;
+  korning.fart = Math.max(-9, Math.min(maxFart, korning.fart));
+  if(Math.abs(korning.fart) < 0.12 && !gas && !broms) korning.fart = 0;
+
+  // Styrning — minskar med farten, som i en riktig bil
+  const maxRatt = 0.62 / (1 + Math.abs(korning.fart) * 0.1);
+  if(vanst)      korning.ratt += 3.4 * dt;
+  else if(hoger) korning.ratt -= 3.4 * dt;
+  else           korning.ratt -= Math.sign(korning.ratt) * 5.2 * dt;
+  korning.ratt = Math.max(-maxRatt, Math.min(maxRatt, korning.ratt));
+  if(Math.abs(korning.ratt) < 0.01) korning.ratt = 0;
+
+  korning.kurs += korning.ratt * (korning.fart / 7) * dt * 2.1;
+  korning.x += Math.sin(korning.kurs) * korning.fart * dt;
+  korning.z += Math.cos(korning.kurs) * korning.fart * dt;
+
+  bil.position.set(korning.x, 0, korning.z);
+  bil.rotation.y = korning.kurs;
+
+  // Kamera bakom bilen
+  const bak = 9.5, upp = 4.4;
+  const mal = new THREE.Vector3(
+    korning.x - Math.sin(korning.kurs) * bak, upp,
+    korning.z - Math.cos(korning.kurs) * bak);
+  kamera.position.lerp(mal, Math.min(1, dt * 4.5));
+  kamera.lookAt(korning.x + Math.sin(korning.kurs)*9, 1.3, korning.z + Math.cos(korning.kurs)*9);
+
+  // Skyltar vänds mot kameran
+  skyltlista.forEach(s => {
+    if(Math.abs(s.x - korning.x) < 90 && Math.abs(s.z - korning.z) < 90)
+      s.mesh.lookAt(kamera.position);
+  });
+
+  // Var är vi?
+  const n = narmasteVag(korning.x, korning.z);
+  if(n.seg){
+    utanforVag = n.avstand > n.seg.halvbredd + 2.2;
+    aktuellGrans = n.seg.grans;
+    aktuellGata = n.seg.namn;
+  } else utanforVag = true;
+
+  ritaHUD();
+}
+
+let hudRakning = 0;
+function ritaHUD(){
+  $("farttext").textContent = Math.round(Math.abs(korning.fart) * 3.6);
+  ritaKompass();
+  if(++hudRakning % 10) return;
+  $("granssskylt").textContent = aktuellGrans;
+  $("gata").textContent = aktuellGata;
+  const over = Math.abs(korning.fart)*3.6 > aktuellGrans + 3;
+  if(utanforVag) visaNotis("Du är utanför vägbanan");
+  else if(over)  visaNotis("Du kör för fort — gränsen är " + aktuellGrans);
+  else           visaNotis(null);
+}
+function visaNotis(t){
+  const n = $("notis");
+  if(t){ n.textContent = t; n.dataset.pa = "true"; }
+  else n.dataset.pa = "false";
+}
+
+/* ═══ Start ═══ */
+function byggValj(){
+  const box = $("valj");
+  OMRADEN.forEach((o, i) => {
+    const b = document.createElement("button");
+    b.className = "omr"; b.type = "button";
+    b.setAttribute("aria-pressed", String(i === 0));
+    b.textContent = o.namn;
+    b.addEventListener("click", () => {
+      box.querySelectorAll(".omr").forEach(x => x.setAttribute("aria-pressed","false"));
+      b.setAttribute("aria-pressed","true");
+      valtOmrade = o;
+    });
+    box.appendChild(b);
+  });
+}
+
+let sparadData = null;
+
+async function starta(element){
+  origo = { lat:valtOmrade.lat, lng:valtOmrade.lng };
+  framdrift(0.55);
+  logg("Bygger världen…");
+  await new Promise(r => setTimeout(r, 30));
+
+  initScen();
+  const antal = byggVarld(element);
+  if(!antal) throw new Error("Inga körbara vägar hittades i området");
+  bil = byggBil();
+  aterstall();
+  byggKompass();
+  framdrift(1);
+
+  $("start").style.display = "none";
+  $("hud").hidden = false;
+  klocka = new THREE.Clock();
+  animera();
+}
+
+function lasOmFel(f){
+  logg("Fel: " + f.message);
+  framdrift(0);
+  $("bygg").disabled = false;
+  $("testvarld").disabled = false;
+}
+
+$("bygg").addEventListener("click", async () => {
+  $("bygg").disabled = true; $("testvarld").disabled = true;
+  try{
+    framdrift(0.15);
+    const element = await hamtaOSM(valtOmrade);
+    sparadData = element;
+    await starta(element);
+  }catch(f){ lasOmFel(f); }
+});
+
+$("testvarld").addEventListener("click", async () => {
+  $("bygg").disabled = true; $("testvarld").disabled = true;
+  try{
+    logg("Bygger övningsområdet — inga nätanrop behövs.");
+    await starta(ovningsomrade());
+    $("spara").hidden = true;
+  }catch(f){ lasOmFel(f); }
+});
+
+$("fil").addEventListener("change", async e => {
+  const f = e.target.files[0];
+  if(!f) return;
+  try{
+    const d = JSON.parse(await f.text());
+    const element = Array.isArray(d) ? d : d.elements;
+    if(!element || !element.length) throw new Error("Filen innehåller inga element");
+    sparadData = element;
+    logg("Läste " + element.length + " element från filen.");
+    await starta(element);
+  }catch(fel){ lasOmFel(fel); }
+});
+
+$("spara").addEventListener("click", () => {
+  if(!sparadData) return;
+  const blob = new Blob([JSON.stringify({ elements:sparadData })], { type:"application/json" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "varld-" + valtOmrade.namn.toLowerCase() + ".json";
+  a.click();
+  URL.revokeObjectURL(a.href);
+});
+
+function initScen(){
+  scen = new THREE.Scene();
+  scen.background = new THREE.Color(0x8fa7bd);
+  scen.fog = new THREE.Fog(0x8fa7bd, 190, 620);
+
+  kamera = new THREE.PerspectiveCamera(62, innerWidth/innerHeight, 0.5, 1800);
+  renderare = new THREE.WebGLRenderer({ antialias:true });
+  renderare.setPixelRatio(Math.min(devicePixelRatio, 2));
+  renderare.setSize(innerWidth, innerHeight);
+  document.body.appendChild(renderare.domElement);
+
+  // I en inbäddad ram (iframe) får sidan inga tangenttryck förrän den fått
+  // fokus. Därför tar vi fokus direkt och igen vid varje klick.
+  renderare.domElement.tabIndex = 0;
+  renderare.domElement.style.outline = "none";
+  const taFokus = () => { try{ window.focus(); renderare.domElement.focus(); }catch(_){} };
+  taFokus();
+  renderare.domElement.addEventListener("pointerdown", taFokus);
+
+  scen.add(new THREE.HemisphereLight(0xdfeaf5, 0x40463c, 1.0));
+  const sol = new THREE.DirectionalLight(0xfff4e0, 0.75);
+  sol.position.set(130, 220, 90);
+  scen.add(sol);
+
+  addEventListener("resize", () => {
+    kamera.aspect = innerWidth/innerHeight;
+    kamera.updateProjectionMatrix();
+    renderare.setSize(innerWidth, innerHeight);
+  });
+}
+
+function animera(){
+  requestAnimationFrame(animera);
+  uppdatera(Math.min(klocka.getDelta(), 0.05));
+  renderare.render(scen, kamera);
+}
+
+byggValj();
+</script>
+</body>
+</html>

@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Körkort · Söderort</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500&family=IBM+Plex+Mono:wght@400&display=swap" rel="stylesheet">
+<style>
+:root{
+  --asfalt:#22262b; --djup:#191c20; --panel:#2e343b; --linje:#47505a;
+  --vit:#f2f3ef; --dov:#8c949e; --gul:#ffc300; --bla:#0b5aa2;
+  --display:"Barlow Condensed","Arial Narrow",sans-serif;
+  --brod:"Barlow",system-ui,sans-serif; --mono:"IBM Plex Mono",ui-monospace,monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;min-height:100dvh;background:var(--djup);color:var(--vit);
+  font-family:var(--brod);font-size:15px;-webkit-font-smoothing:antialiased;
+  padding:env(safe-area-inset-top,0px) 0 env(safe-area-inset-bottom,0px)}
+.inre{max-width:620px;margin:0 auto;padding:34px 18px 48px}
+.topp{display:flex;align-items:baseline;gap:10px;margin-bottom:6px}
+h1{font-family:var(--display);font-weight:700;font-size:34px;letter-spacing:.07em;
+  text-transform:uppercase;margin:0}
+.topp span{font-family:var(--mono);font-size:10px;color:var(--gul);letter-spacing:.2em;
+  text-transform:uppercase}
+.ingress{color:var(--dov);line-height:1.62;margin:0 0 26px;font-size:14.5px}
+.kort{display:block;text-decoration:none;color:inherit;background:var(--asfalt);
+  border:1px solid var(--linje);border-left:4px solid var(--gul);border-radius:4px;
+  padding:17px 18px;margin-bottom:11px;transition:background .13s ease}
+.kort:hover{background:var(--panel)}
+.kort--bla{border-left-color:var(--bla)}
+.kort h2{font-family:var(--display);font-weight:600;font-size:21px;letter-spacing:.04em;
+  margin:0 0 5px}
+.kort p{margin:0;color:var(--dov);font-size:13.5px;line-height:1.58}
+.kort em{display:block;margin-top:8px;font-family:var(--mono);font-size:10px;
+  letter-spacing:.11em;text-transform:uppercase;color:var(--gul);font-style:normal}
+.kort--bla em{color:#6ba8dd}
+.not{margin-top:26px;padding-top:18px;border-top:1px solid var(--linje);
+  color:var(--dov);font-size:12.5px;line-height:1.62}
+.not strong{color:var(--vit);font-weight:600}
+a.lank{color:var(--gul)}
+</style>
+</head>
+<body>
+<div class="inre">
+  <div class="topp"><h1>Körkort</h1><span>Söderort</span></div>
+  <p class="ingress">Övningsverktyg för svensk körkortsteori. Reglerna lärs ut där de
+     gäller — i en körbar miljö i stället för på en lista.</p>
+
+  <a class="kort" href="kora.html">
+    <h2>Körvärlden</h2>
+    <p>Kör fritt i en 3D-värld byggd av riktiga vägdata från OpenStreetMap. Gatunät,
+       hastighetsgränser, väjningsplikt och övergångsställen kommer från kartan.
+       Fungerar även utan nätet via det inbyggda övningsområdet.</p>
+    <em>Börja här</em>
+  </a>
+
+  <a class="kort kort--bla" href="mapillary.html">
+    <h2>Gatuvy och frågegranskning</h2>
+    <p>Verkliga gatufoton från Mapillary, täckningsskanning för Söderort, och
+       granskningsläget där frågorna kontrolleras mot lagtexten.</p>
+    <em>Kräver Mapillary-token · granskning kräver ingen</em>
+  </a>
+
+  <div class="not">
+    <p><strong>Inte officiell.</strong> Appen är inte godkänd av Transportstyrelsen.
+       Frågorna är egna, skrivna utifrån Trafikförordningen (1998:1276),
+       förordningen (2001:651) om vägtrafikdefinitioner och Vägmärkesförordningen
+       (2007:90). Inga frågor från det riktiga teoriprovet förekommer.</p>
+    <p>Paragrafhänvisningarna är kontrollerade mot källtexten, men ingen fråga är
+       ännu granskad av en människa med körkortskunskap. Låt en trafiklärare läsa
+       igenom innan appen används av någon annan.</p>
+    <p>Kartdata © OpenStreetMap-bidragsgivare (ODbL). Gatubilder © Mapillary-
+       bidragsgivare (CC BY-SA).</p>
+  </div>
+</div>
+</body>
+</html>

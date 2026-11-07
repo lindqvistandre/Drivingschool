@@ -1,0 +1,1053 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Körkort · Gatuvy — Söderort</title>
+
+<link href="https://unpkg.com/mapillary-js@4.1.2/dist/mapillary.css" rel="stylesheet" />
+<link href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" rel="stylesheet" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+<style>
+:root{
+  --asfalt:#22262b; --asfalt-djup:#191c20;
+  --panel:#2e343b; --panel-ljus:#3a424a; --linje:#47505a;
+  --vit:#f2f3ef; --dov:#8c949e;
+  --gul:#ffc300; --bla:#0b5aa2; --rod:#c8102e; --gron:#2f8f5b;
+  --display:"Barlow Condensed","Arial Narrow",sans-serif;
+  --brod:"Barlow",system-ui,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,monospace;
+  --rad:3px;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--asfalt-djup);color:var(--vit);font-family:var(--brod);
+  font-size:15px;-webkit-font-smoothing:antialiased;overflow:hidden}
+button{font:inherit;color:inherit;cursor:pointer}
+:focus-visible{outline:2px solid var(--gul);outline-offset:2px}
+
+.app{display:grid;grid-template-rows:auto 1fr auto;height:100dvh}
+
+.topp{display:flex;align-items:center;gap:12px;padding:8px 14px;flex-wrap:wrap;
+  background:var(--asfalt);border-bottom:1px solid var(--linje)}
+body[data-lage="granska"] .hoger{display:none}
+.marke{display:flex;align-items:baseline;gap:8px;flex:0 0 auto}
+.marke b{font-family:var(--display);font-weight:700;font-size:20px;letter-spacing:.09em;text-transform:uppercase}
+.marke span{font-family:var(--mono);font-size:9.5px;color:var(--gul);letter-spacing:.14em;text-transform:uppercase}
+
+.lagen{display:flex;background:var(--asfalt-djup);border:1px solid var(--linje);
+  border-radius:var(--rad);overflow:hidden;flex:0 0 auto}
+.lagen button{background:none;border:none;padding:6px 15px;font-family:var(--display);
+  font-weight:600;font-size:14px;letter-spacing:.06em;text-transform:uppercase;color:var(--dov)}
+.lagen button[aria-pressed="true"]{background:var(--gul);color:#191c20}
+
+.hoger{display:flex;gap:7px;margin-left:auto;align-items:center;min-width:0}
+input[type=text],input[type=password]{font-family:var(--mono);font-size:12px;
+  background:var(--asfalt-djup);color:var(--vit);border:1px solid var(--linje);
+  border-radius:var(--rad);padding:7px 10px;min-width:0}
+input::placeholder{color:#5d666f}
+#token{width:min(200px,32vw)}
+.knapp{background:var(--panel-ljus);border:1px solid var(--linje);border-radius:var(--rad);
+  padding:7px 12px;font-family:var(--display);font-weight:600;font-size:14px;
+  letter-spacing:.05em;text-transform:uppercase;white-space:nowrap;transition:background .12s ease}
+.knapp:hover{background:#48525c}
+.knapp:disabled{opacity:.45;cursor:not-allowed}
+.knapp--gul{background:var(--gul);color:#191c20;border-color:var(--gul)}
+.knapp--gul:hover{background:#ffd034}
+.knapp--panel{display:none}
+
+.mitt{display:grid;min-height:0;position:relative}
+body[data-lage="ova"] .mitt{grid-template-columns:1fr}
+body[data-lage="bygg"] .mitt{grid-template-columns:1fr 340px}
+.vy{position:relative;min-height:0;background:#000;display:grid}
+body[data-lage="ova"] .vy{grid-template-rows:1fr}
+body[data-lage="bygg"] .vy{grid-template-rows:1fr 200px}
+body[data-lage="ova"] #karta{display:none}
+body[data-lage="ova"] .sida{display:none}
+body[data-lage="granska"] .vy{display:none}
+body[data-lage="granska"] .sida{display:none}
+body[data-lage="granska"] .mitt{grid-template-columns:1fr}
+.granska{display:none;overflow-y:auto;background:var(--asfalt-djup)}
+body[data-lage="granska"] .granska{display:block}
+.granska__inre{max-width:760px;margin:0 auto;padding:20px 18px 40px}
+.granska__topp{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:16px}
+.granska__topp h2{font-family:var(--display);font-weight:700;font-size:24px;
+  letter-spacing:.06em;text-transform:uppercase;margin:0}
+.granska__rakning{font-family:var(--mono);font-size:11px;color:var(--dov);margin-left:auto}
+.fragekort{background:var(--asfalt);border:1px solid var(--linje);border-radius:var(--rad);
+  margin-bottom:9px;overflow:hidden}
+.fragekort[data-status="ok"]{border-left:3px solid var(--gron)}
+.fragekort[data-status="andra"]{border-left:3px solid var(--rod)}
+.fragekort__knapp{width:100%;text-align:left;background:none;border:none;padding:12px 14px;
+  display:flex;gap:11px;align-items:flex-start}
+.fragekort__knapp:hover{background:var(--panel)}
+.fragekort__id{font-family:var(--mono);font-size:10px;color:var(--dov);flex:0 0 88px;padding-top:2px}
+.fragekort__fraga{font-size:14px;line-height:1.45;flex:1}
+.fragekort__flagga{flex:0 0 auto;font-family:var(--mono);font-size:9px;letter-spacing:.1em;
+  padding:2px 6px;border-radius:2px;white-space:nowrap}
+.flagga--kall{background:rgba(47,143,91,.2);color:#5fc48c}
+.flagga--ejkall{background:rgba(200,16,46,.2);color:#f2778d}
+.fragekort__kropp{display:none;padding:0 14px 14px;border-top:1px solid var(--linje);margin-top:2px}
+.fragekort[data-oppen="true"] .fragekort__kropp{display:block}
+.alt{list-style:none;margin:12px 0;padding:0;display:grid;gap:5px}
+.alt li{background:var(--panel);border-left:3px solid var(--linje);border-radius:var(--rad);
+  padding:8px 11px;font-size:13.5px}
+.alt li[data-ratt="true"]{border-left-color:var(--gron);background:rgba(47,143,91,.14)}
+.granskaknappar{display:flex;gap:7px;margin-top:12px;flex-wrap:wrap}
+.granskaknappar .knapp{flex:1;min-width:120px}
+.knapp--gron{background:var(--gron);color:#fff;border-color:var(--gron)}
+.knapp--rod{background:var(--rod);color:#fff;border-color:var(--rod)}
+.granska__not{width:100%;margin-top:8px;font-family:var(--brod);font-size:13px;
+  background:var(--asfalt-djup);color:var(--vit);border:1px solid var(--linje);
+  border-radius:var(--rad);padding:8px 10px;resize:vertical;min-height:52px}
+#mly{position:relative;min-height:0;background:#000}
+
+.tom{position:absolute;inset:0;z-index:20;display:grid;place-content:center;justify-items:center;
+  gap:13px;padding:26px;text-align:center;background:var(--asfalt-djup)}
+.tom h2{font-family:var(--display);font-weight:600;font-size:22px;letter-spacing:.05em;
+  text-transform:uppercase;margin:0}
+.tom p{margin:0;color:var(--dov);max-width:40ch;line-height:1.55;font-size:14px}
+.tom a{color:var(--gul)}
+.tom strong{color:var(--vit)}
+.triangel{width:0;height:0;border-left:25px solid transparent;border-right:25px solid transparent;
+  border-bottom:43px solid var(--gul);position:relative}
+.triangel::after{content:"!";position:absolute;left:-5px;top:18px;font-family:var(--display);
+  font-weight:700;font-size:21px;color:#191c20}
+
+.kompass{position:absolute;top:0;left:0;right:0;height:40px;z-index:6;overflow:hidden;
+  pointer-events:none;background:linear-gradient(to bottom,rgba(25,28,32,.94),rgba(25,28,32,0));
+  -webkit-mask-image:linear-gradient(to right,transparent,#000 14%,#000 86%,transparent);
+          mask-image:linear-gradient(to right,transparent,#000 14%,#000 86%,transparent)}
+.kompass__band{position:absolute;top:0;left:0;height:100%;will-change:transform}
+.kompass__tick{position:absolute;top:8px;width:1px;height:7px;background:var(--linje)}
+.kompass__tick--stor{height:12px;background:var(--dov)}
+.kompass__namn{position:absolute;top:21px;transform:translateX(-50%);font-family:var(--display);
+  font-weight:600;font-size:13px;letter-spacing:.11em;color:var(--vit)}
+.kompass__nal{position:absolute;top:0;left:50%;transform:translateX(-50%);width:0;height:0;
+  border-left:6px solid transparent;border-right:6px solid transparent;
+  border-top:9px solid var(--gul);z-index:2}
+.kompass__grad{position:absolute;top:12px;left:50%;transform:translateX(-50%);
+  font-family:var(--mono);font-size:11px;color:var(--gul);
+  background:rgba(25,28,32,.85);padding:1px 5px;border-radius:2px}
+
+.hud{position:absolute;top:48px;left:14px;z-index:6;display:flex;flex-direction:column;gap:7px;
+  align-items:flex-start;pointer-events:none}
+.bricka{background:rgba(25,28,32,.86);border:1px solid var(--linje);border-radius:var(--rad);
+  padding:5px 11px;font-family:var(--mono);font-size:11px;letter-spacing:.04em}
+.bricka b{color:var(--gul)}
+.varning{background:rgba(200,16,46,.92);border-color:transparent;font-family:var(--brod);
+  font-size:12.5px;display:flex;gap:10px;align-items:center;pointer-events:auto}
+.varning button{background:rgba(0,0,0,.28);border:none;border-radius:2px;padding:3px 9px;
+  font-family:var(--display);font-weight:600;font-size:12.5px;letter-spacing:.05em;text-transform:uppercase}
+
+#karta{border-top:1px solid var(--linje);background:#1b1e22}
+.leaflet-container{background:#1b1e22}
+.leaflet-control-attribution{background:rgba(25,28,32,.82)!important;color:var(--dov)!important;font-size:10px!important}
+.leaflet-control-attribution a{color:var(--dov)!important}
+
+.blad{position:absolute;left:0;right:0;bottom:0;z-index:40;
+  background:var(--asfalt);border-top:2px solid var(--gul);
+  border-radius:12px 12px 0 0;box-shadow:0 -14px 40px rgba(0,0,0,.6);
+  transform:translateY(102%);transition:transform .26s cubic-bezier(.2,.8,.3,1);
+  max-height:82dvh;overflow-y:auto}
+.blad[data-oppen="true"]{transform:translateY(0)}
+.blad__inre{max-width:640px;margin:0 auto;padding:16px 18px 20px}
+.blad__topp{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.tagg{font-family:var(--mono);font-size:9.5px;letter-spacing:.15em;text-transform:uppercase;
+  color:#191c20;background:var(--gul);padding:3px 8px;border-radius:2px}
+.tagg--dov{background:var(--panel-ljus);color:var(--dov)}
+.blad h3{font-family:var(--brod);font-weight:600;font-size:18px;line-height:1.42;margin:0 0 15px}
+.svar{display:grid;gap:7px}
+.svar button{text-align:left;background:var(--panel);border:1px solid transparent;
+  border-left:3px solid var(--linje);border-radius:var(--rad);padding:12px 14px;
+  font-size:14.5px;line-height:1.4;transition:background .12s ease}
+.svar button:hover:not(:disabled){background:var(--panel-ljus)}
+.svar button:disabled{cursor:default}
+.svar button[data-utfall="ratt"]{border-left-color:var(--gron);background:rgba(47,143,91,.16)}
+.svar button[data-utfall="fel"]{border-left-color:var(--rod);background:rgba(200,16,46,.14)}
+.forklaring{margin-top:15px;padding:14px 15px;background:var(--panel);
+  border-left:3px solid var(--gul);border-radius:var(--rad)}
+.forklaring p{margin:0;font-size:14px;line-height:1.62}
+.forklaring .regel{margin-top:11px;font-family:var(--mono);font-size:11px;color:var(--dov);
+  line-height:1.5;white-space:pre-line}
+.bladknappar{display:flex;gap:8px;margin-top:14px}
+.bladknappar .knapp{flex:1}
+
+.sida{background:var(--asfalt);border-left:1px solid var(--linje);overflow-y:auto;
+  display:flex;flex-direction:column}
+.block{padding:13px 15px;border-bottom:1px solid var(--linje)}
+.etikett{font-family:var(--mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--gul);margin:0 0 9px}
+.hint{font-size:12px;color:var(--dov);line-height:1.5;margin:8px 0 0}
+.sokrad{display:flex;gap:6px}
+.sokrad input{flex:1}
+.traffar{list-style:none;margin:8px 0 0;padding:0;display:grid;gap:4px}
+.traffar li button{width:100%;text-align:left;background:var(--panel);border:none;
+  border-left:3px solid var(--bla);border-radius:var(--rad);padding:7px 10px;font-size:12.5px;line-height:1.35}
+.traffar li button:hover{background:var(--panel-ljus)}
+.chips{display:flex;flex-wrap:wrap;gap:5px}
+.chip{background:var(--panel);border:1px solid transparent;border-radius:13px;padding:5px 12px;
+  font-family:var(--display);font-weight:600;font-size:14px;letter-spacing:.03em}
+.chip:hover{background:var(--panel-ljus)}
+.chip[aria-pressed="true"]{background:var(--gul);color:#191c20}
+.resultat{background:var(--panel);border-radius:var(--rad);padding:10px 12px;margin-top:9px;
+  font-size:12.5px;line-height:1.6}
+.resultat b{font-family:var(--display);font-size:16px}
+.matare{height:6px;border-radius:3px;background:var(--asfalt-djup);overflow:hidden;margin:7px 0}
+.matare i{display:block;height:100%;background:var(--gron);width:0;transition:width .3s ease}
+.domslut{font-family:var(--display);font-weight:600;font-size:15px;letter-spacing:.04em;
+  text-transform:uppercase;margin-top:6px}
+.rank{width:100%;border-collapse:collapse;margin-top:10px;font-size:12px}
+.rank th{font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--dov);text-align:right;padding:0 0 6px;font-weight:400}
+.rank th:first-child{text-align:left}
+.rank td{padding:6px 0;border-top:1px solid var(--linje);text-align:right;font-family:var(--mono);font-size:11.5px}
+.rank td:first-child{text-align:left;font-family:var(--display);font-size:14px;font-weight:600;letter-spacing:.03em}
+.rank tr[data-vinnare="true"] td{color:var(--gul)}
+.rank tr[data-vinnare="true"] td:first-child::after{content:" ★"}
+.rank tbody tr{cursor:pointer}
+.rank tbody tr:hover td{background:var(--panel)}
+select{width:100%;font-family:var(--brod);font-size:13px;background:var(--asfalt-djup);
+  color:var(--vit);border:1px solid var(--linje);border-radius:var(--rad);padding:8px 9px}
+.data{display:grid;grid-template-columns:auto 1fr;gap:5px 12px;font-size:12.5px;margin-top:9px}
+.data dt{color:var(--dov)}
+.data dd{margin:0;font-family:var(--mono);font-size:12px;text-align:right;word-break:break-all}
+.punkter{list-style:none;margin:0 0 9px;padding:0;display:grid;gap:4px;max-height:150px;overflow-y:auto}
+.punkter li{display:flex;justify-content:space-between;align-items:center;gap:8px;
+  background:var(--panel);border-radius:var(--rad);padding:6px 9px;font-size:11.5px}
+.punkter li span{font-family:var(--mono)}
+.punkter li button{background:none;border:none;color:var(--dov);padding:0 2px;font-size:15px;line-height:1}
+.punkter li button:hover{color:var(--rod)}
+.knapprad{display:grid;gap:6px}
+
+.status{padding:8px 14px;font-size:12.5px;min-height:38px;display:flex;align-items:center;gap:9px;
+  background:var(--asfalt);border-top:1px solid var(--linje)}
+.status::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--linje);flex:0 0 auto}
+.status[data-typ="ok"]::before{background:var(--gron)}
+.status[data-typ="fel"]::before{background:var(--rod)}
+.status[data-typ="jobbar"]::before{background:var(--gul)}
+.status small{margin-left:auto;color:var(--dov);font-size:10.5px;text-align:right}
+.status small a{color:var(--dov)}
+
+@media (max-width:880px){
+  body[data-lage="bygg"] .mitt{grid-template-columns:1fr}
+  body[data-lage="bygg"] .vy{grid-template-rows:1fr 165px}
+  .knapp--panel{display:block}
+  #token{width:26vw}
+  .marke span{display:none}
+  .topp{gap:8px;padding:7px 11px}
+  .lagen button{padding:6px 10px;font-size:13px}
+  .hoger{gap:6px}
+  .knapp{padding:6px 10px;font-size:13px}
+  .fragekort__id{flex:0 0 74px;font-size:9px}
+  .fragekort__flagga{display:none}
+  .granska__inre{padding:16px 13px 34px}
+  body[data-lage="bygg"] .sida{position:absolute;inset:auto 0 0 0;z-index:30;max-height:76dvh;
+    border-left:none;border-top:1px solid var(--linje);border-radius:12px 12px 0 0;
+    box-shadow:0 -10px 34px rgba(0,0,0,.5);transform:translateY(101%);transition:transform .22s ease}
+  body[data-lage="bygg"] .sida[data-oppen="true"]{transform:translateY(0)}
+  .blad__inre{padding:14px 15px 18px}
+  .blad h3{font-size:17px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+
+<body data-lage="ova">
+<div class="app">
+
+  <header class="topp">
+    <div class="marke"><b>Körkort</b><span>Söderort</span></div>
+    <div class="lagen" role="group" aria-label="Läge">
+      <button id="lage-ova"  type="button" aria-pressed="true">Öva</button>
+      <button id="lage-bygg" type="button" aria-pressed="false">Bygg</button>
+      <button id="lage-granska" type="button" aria-pressed="false">Granska</button>
+    </div>
+    <div class="hoger">
+      <input id="token" type="password" placeholder="Mapillary token" autocomplete="off" spellcheck="false" />
+      <button class="knapp knapp--gul" id="starta">Anslut</button>
+      <button class="knapp knapp--panel" id="panelknapp" aria-expanded="false">Panel</button>
+    </div>
+  </header>
+
+  <main class="mitt">
+    <section class="vy">
+      <div id="mly">
+        <div class="tom" id="tom">
+          <div class="triangel"></div>
+          <h2 id="tom-rubrik">Ingen bild laddad</h2>
+          <p id="tom-text">Klistra in din Mapillary-token och tryck Anslut. Hämta en gratis token på
+            <a href="https://www.mapillary.com/dashboard/developers" target="_blank" rel="noopener">mapillary.com/dashboard/developers</a>.</p>
+        </div>
+
+        <div class="kompass" id="kompass" hidden>
+          <div class="kompass__band" id="band"></div>
+          <div class="kompass__nal"></div>
+          <div class="kompass__grad" id="grad">0°</div>
+        </div>
+
+        <div class="hud" id="hud" hidden>
+          <div class="bricka" id="framsteg">Frågor: <b>0</b> av 0</div>
+          <div class="bricka varning" id="utanfor" hidden>
+            <span>Du är utanför övningsområdet.</span>
+            <button type="button" id="tillbaka">Tillbaka</button>
+          </div>
+        </div>
+      </div>
+      <div id="karta"></div>
+
+      <div class="blad" id="blad" data-oppen="false" role="dialog" aria-labelledby="fraga-text">
+        <div class="blad__inre">
+          <div class="blad__topp">
+            <span class="tagg" id="f-kategori">—</span>
+            <span class="tagg tagg--dov" id="f-niva">—</span>
+          </div>
+          <h3 id="fraga-text">—</h3>
+          <div class="svar" id="svar"></div>
+          <div class="forklaring" id="forklaring" hidden>
+            <p id="f-text"></p>
+            <div class="regel" id="f-regel"></div>
+          </div>
+          <div class="bladknappar">
+            <button class="knapp" id="igen" hidden>Svara igen</button>
+            <button class="knapp knapp--gul" id="fortsatt">Kör vidare</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="granska" id="granska">
+      <div class="granska__inre">
+        <div class="granska__topp">
+          <h2>Granska frågor</h2>
+          <span class="granska__rakning" id="g-rakning">—</span>
+        </div>
+        <p class="hint" style="margin:0 0 16px">Läs varje fråga och kontrollera att svaret och förklaringen stämmer. Grön flagga betyder att paragrafhänvisningen är läst i lagtexten. Röd betyder att den inte är det — de behöver extra uppmärksamhet. Ingen token krävs här.</p>
+        <div id="g-lista"></div>
+        <button class="knapp knapp--gul" id="g-exportera" style="width:100%;margin-top:14px">Exportera granskningen</button>
+      </div>
+    </section>
+
+    <aside class="sida" id="sida">
+      <div class="block">
+        <p class="etikett">Sök plats</p>
+        <div class="sokrad">
+          <input id="sok" type="text" placeholder="t.ex. Farsta centrum" autocomplete="off" />
+          <button class="knapp" id="sokknapp">Sök</button>
+        </div>
+        <ul class="traffar" id="traffar"></ul>
+      </div>
+
+      <div class="block">
+        <p class="etikett">Söderort — snabbval</p>
+        <div class="chips" id="chips"></div>
+      </div>
+
+      <div class="block">
+        <p class="etikett">Täckningsskanning</p>
+        <button class="knapp knapp--gul" id="skanna-alla" style="width:100%;margin-bottom:6px">Skanna hela Söderort</button>
+        <button class="knapp" id="skanna" style="width:100%">Skanna kartans område</button>
+        <div class="resultat" id="resultat" hidden>
+          <div><b id="r-andel">—</b> av rutnätet har bilder</div>
+          <div class="matare"><i id="r-matare"></i></div>
+          <div>Median år: <b id="r-ar">—</b> · Kvalitet: <b id="r-kval">—</b> · 360°: <b id="r-pano">—</b></div>
+          <div class="domslut" id="r-dom">—</div>
+        </div>
+        <table class="rank" id="rank" hidden>
+          <thead><tr><th>Område</th><th>Täckn.</th><th>År</th><th>Kval.</th><th>360°</th></tr></thead>
+          <tbody id="rank-kropp"></tbody>
+        </table>
+        <p class="hint">Hela Söderort tar ungefär en minut och testar nio områden. Kartans område skannar bara det du ser just nu.</p>
+      </div>
+
+      <div class="block">
+        <p class="etikett">Placera fråga här</p>
+        <select id="valjfraga"></select>
+        <dl class="data">
+          <dt>Position</dt><dd id="d-pos">—</dd>
+          <dt>Riktning</dt><dd id="d-rikt">—</dd>
+          <dt>Datum</dt><dd id="d-datum">—</dd>
+          <dt>Kvalitet</dt><dd id="d-kval">—</dd>
+        </dl>
+        <button class="knapp knapp--gul" id="placera" style="width:100%;margin-top:9px">Placera fråga här</button>
+        <p class="hint">Vrid vyn åt det håll en förare skulle titta innan du placerar.</p>
+      </div>
+
+      <div class="block">
+        <p class="etikett">Placerade frågor</p>
+        <ul class="punkter" id="punkter"></ul>
+        <p class="hint" id="punkter-tom" style="margin:0 0 9px">Inga frågor placerade ännu.</p>
+        <div class="knapprad">
+          <button class="knapp" id="exportera">Exportera till platser.js</button>
+        </div>
+      </div>
+    </aside>
+  </main>
+
+  <footer class="status" id="status" data-typ="">
+    <span id="statustext">Väntar på token.</span>
+    <small>Bilder © <a href="https://www.mapillary.com/" target="_blank" rel="noopener">Mapillary</a> · CC BY-SA · Karta © OpenStreetMap</small>
+  </footer>
+</div>
+
+<script src="fragebank.js"></script>
+<script src="platser.js"></script>
+<script src="https://unpkg.com/mapillary-js@4.1.2/dist/mapillary.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+"use strict";
+
+const INBAKAD_TOKEN = "";
+
+const PLATSVAL = [
+  { namn:"Årsta", lat:59.2985, lng:18.0455 },       { namn:"Enskede", lat:59.2880, lng:18.0700 },
+  { namn:"Johanneshov", lat:59.2935, lng:18.0810 }, { namn:"Älvsjö", lat:59.2790, lng:18.0100 },
+  { namn:"Högdalen", lat:59.2635, lng:18.0435 },    { namn:"Gubbängen", lat:59.2670, lng:18.0800 },
+  { namn:"Skarpnäck", lat:59.2665, lng:18.1330 },   { namn:"Farsta", lat:59.2440, lng:18.0930 },
+  { namn:"Skärholmen", lat:59.2770, lng:17.9070 }
+];
+const KATEGORINAMN = {
+  vajning:"Väjningsplikt", skyltar:"Vägmärken", hastighet:"Hastighet",
+  placering:"Placering", oskyddade:"Oskyddade", parkering:"Parkering"
+};
+const NIVANAMN = { 1:"Grund", 2:"Medel", 3:"Svår" };
+const PX_PER_GRAD = 3;
+const VADERSTRECK = ["N","NO","O","SO","S","SV","V","NV"];
+const FALT = "id,geometry,captured_at,compass_angle,is_pano,quality_score";
+
+const $ = id => document.getElementById(id);
+const bank = window.FRAGEBANK || [];
+const omrade = window.OMRADE || null;
+const platser = (window.PLATSER || []).slice();
+
+let token = "", viewer = null, karta = null, nal = null, skanlager = null, punktlager = null;
+let nuvarande = null, bearing = 0, lage = "ova", skannar = false;
+let aktivFraga = null, besvarade = {}, nyaPlatser = [];
+
+function status(t, typ=""){ $("statustext").textContent = t; $("status").dataset.typ = typ; }
+
+/* ── Geometri ───────────────────────────────────────────── */
+function avstand(a, b, c, d){
+  const R = 6371000, r = Math.PI / 180;
+  const dLat = (c - a) * r, dLng = (d - b) * r;
+  const x = Math.sin(dLat/2)**2 + Math.cos(a*r) * Math.cos(c*r) * Math.sin(dLng/2)**2;
+  return 2 * R * Math.asin(Math.sqrt(x));
+}
+function riktningsskillnad(a, b){
+  return Math.abs(((a - b) % 360 + 540) % 360 - 180);
+}
+
+/* ── Kompass ────────────────────────────────────────────── */
+function byggBand(){
+  const band = $("band"); band.innerHTML = "";
+  for(let g = -360; g <= 720; g += 15){
+    const stor = g % 45 === 0;
+    const t = document.createElement("div");
+    t.className = "kompass__tick" + (stor ? " kompass__tick--stor" : "");
+    t.style.left = (g * PX_PER_GRAD) + "px"; band.appendChild(t);
+    if(stor){
+      const n = document.createElement("div");
+      n.className = "kompass__namn"; n.style.left = (g * PX_PER_GRAD) + "px";
+      n.textContent = VADERSTRECK[(((g/45) % 8) + 8) % 8]; band.appendChild(n);
+    }
+  }
+}
+function ritaKompass(){
+  const b = $("kompass").clientWidth;
+  $("band").style.transform = `translateX(${b/2 - bearing * PX_PER_GRAD}px)`;
+  $("grad").textContent = Math.round(bearing) + "°";
+}
+
+/* ── API ────────────────────────────────────────────────── */
+async function narmaste(lat, lng, radie = 50, antal = 10){
+  const url = `https://graph.mapillary.com/images?access_token=${encodeURIComponent(token)}`
+            + `&fields=${FALT}&lat=${lat}&lng=${lng}&radius=${radie}&limit=${antal}`;
+  const d = await (await fetch(url)).json();
+  if(d.error) throw new Error(d.error.message || "API-fel");
+  return d.data || [];
+}
+async function bildinfo(id){
+  const url = `https://graph.mapillary.com/${id}?access_token=${encodeURIComponent(token)}&fields=${FALT}`;
+  const d = await (await fetch(url)).json();
+  if(d.error) throw new Error(d.error.message || "API-fel");
+  return d;
+}
+
+/* ── Bilddata ───────────────────────────────────────────── */
+function visaData(b){
+  nuvarande = b;
+  $("d-datum").textContent = b.captured_at ? new Date(b.captured_at).toLocaleDateString("sv-SE") : "okänt";
+  $("d-kval").textContent = typeof b.quality_score === "number" ? b.quality_score.toFixed(2) : "—";
+  if(b.geometry && b.geometry.coordinates){
+    const [lng, lat] = b.geometry.coordinates;
+    $("d-pos").textContent = lat.toFixed(5) + ", " + lng.toFixed(5);
+    if(nal) nal.setLatLng([lat, lng]);
+    kollaOmrade(lat, lng);
+    if(lage === "ova") kollaUtlosare(lat, lng);
+  }
+}
+function kollaOmrade(lat, lng){
+  if(!omrade || lage !== "ova"){ $("utanfor").hidden = true; return; }
+  $("utanfor").hidden = avstand(lat, lng, omrade.lat, omrade.lng) <= omrade.radie;
+}
+$("tillbaka").addEventListener("click", () => {
+  if(omrade) gaTill(omrade.lat, omrade.lng, omrade.namn);
+});
+
+/* ── Navigering ─────────────────────────────────────────── */
+async function gaTill(lat, lng, vad){
+  if(!viewer){ status("Anslut med en token först.", "fel"); return; }
+  status(`Söker bilder vid ${vad}…`, "jobbar");
+  try{
+    const t = await narmaste(lat, lng);
+    if(!t.length){ status(`Ingen täckning inom 50 m från ${vad}.`, "fel"); return; }
+    await viewer.moveTo(t[0].id);
+    visaData(t[0]);
+    $("tom").hidden = true; $("kompass").hidden = false; $("hud").hidden = false;
+    status(`${t.length} bild${t.length === 1 ? "" : "er"} vid ${vad}.`, "ok");
+  }catch(f){ status("Fel: " + f.message, "fel"); }
+}
+
+/* ── ÖVA ────────────────────────────────────────────────── */
+function ritaFramsteg(){
+  $("framsteg").innerHTML = `Frågor: <b>${Object.keys(besvarade).length}</b> av ${platser.length}`;
+}
+function kollaUtlosare(lat, lng){
+  if(aktivFraga) return;
+  for(const p of platser){
+    if(besvarade[p.fragaId]) continue;
+    if(avstand(lat, lng, p.lat, p.lng) > (p.radius || 18)) continue;
+    if(typeof p.heading === "number" &&
+       riktningsskillnad(bearing, p.heading) > (p.headingTolerance || 55)) continue;
+    const f = bank.find(x => x.id === p.fragaId);
+    if(f){ oppnaFraga(f); return; }
+  }
+}
+function oppnaFraga(f){
+  aktivFraga = f;
+  $("f-kategori").textContent = KATEGORINAMN[f.kategori] || f.kategori;
+  $("f-niva").textContent = NIVANAMN[f.svarighet] || "";
+  $("fraga-text").textContent = f.fraga;
+  $("forklaring").hidden = true;
+  $("igen").hidden = true;
+  $("fortsatt").textContent = "Hoppa över";
+
+  const box = $("svar"); box.innerHTML = "";
+  f.alternativ.forEach((text, i) => {
+    const b = document.createElement("button");
+    b.type = "button"; b.textContent = text;
+    b.addEventListener("click", () => svara(i));
+    box.appendChild(b);
+  });
+  $("blad").dataset.oppen = "true";
+}
+function svara(index){
+  const f = aktivFraga; if(!f) return;
+  const ratt = index === f.ratt;
+
+  [...$("svar").children].forEach((b, i) => {
+    b.disabled = true;
+    if(i === f.ratt) b.dataset.utfall = "ratt";
+    else if(i === index) b.dataset.utfall = "fel";
+  });
+
+  $("f-text").textContent = f.forklaring;
+  const kallastatus = f.kallaKontrollerad
+    ? "paragraf kontrollerad mot lagtext"
+    : "paragraf EJ kontrollerad";
+  const granskstatus = f.granskad ? "granskad av människa" : "ej granskad av människa";
+  $("f-regel").textContent = "Källa: " + f.regel + "\n" + kallastatus + "  ·  " + granskstatus;
+  $("forklaring").hidden = false;
+  $("igen").hidden = false;
+  $("fortsatt").textContent = "Kör vidare";
+
+  if(!besvarade[f.id]) besvarade[f.id] = { forsta: ratt, forsok: 1 };
+  else besvarade[f.id].forsok++;
+  ritaFramsteg();
+  status(ratt ? "Rätt. Läs förklaringen och kör vidare."
+              : "Inte riktigt — förklaringen står nedanför.", ratt ? "ok" : "");
+}
+$("igen").addEventListener("click", () => { if(aktivFraga) oppnaFraga(aktivFraga); });
+$("fortsatt").addEventListener("click", () => {
+  $("blad").dataset.oppen = "false";
+  aktivFraga = null;
+  if(platser.length && Object.keys(besvarade).length === platser.length){
+    const svaga = Object.entries(besvarade).filter(([,v]) => !v.forsta)
+      .map(([id]) => (bank.find(f => f.id === id) || {}).kategori).filter(Boolean);
+    const unika = [...new Set(svaga)].map(k => KATEGORINAMN[k] || k);
+    status(unika.length
+      ? "Alla frågor besvarade. Öva mer på: " + unika.join(", ") + "."
+      : "Alla frågor besvarade, allt rätt på första försöket.", "ok");
+  }
+});
+
+/* ── BYGG: skanning ─────────────────────────────────────── */
+function median(a){
+  if(!a.length) return null;
+  const s = [...a].sort((x,y) => x-y), m = (s.length/2)|0;
+  return s.length % 2 ? s[m] : (s[m-1]+s[m])/2;
+}
+/* Skannar ett rutnät kring en mittpunkt. Returnerar sammanfattning. */
+async function skannaRuta(mittLat, mittLng, sidaMeter, n, ritaPrickar){
+  const halvLat = (sidaMeter/2) / 111320;
+  const halvLng = (sidaMeter/2) / (111320 * Math.cos(mittLat * Math.PI/180));
+  let tackta = 0, ar = [], kval = [], panos = 0, totalt = 0, provade = 0;
+
+  for(let i = 0; i < n; i++){
+    for(let j = 0; j < n; j++){
+      const lat = mittLat - halvLat + 2*halvLat*i/(n-1);
+      const lng = mittLng - halvLng + 2*halvLng*j/(n-1);
+      provade++;
+      let t = [];
+      try{ t = await narmaste(lat, lng, 50, 5); }
+      catch(f){ throw f; }
+      const har = t.length > 0;
+      if(har){
+        tackta++;
+        t.forEach(x => { totalt++;
+          if(x.captured_at) ar.push(new Date(x.captured_at).getFullYear());
+          if(typeof x.quality_score === "number") kval.push(x.quality_score);
+          if(x.is_pano) panos++; });
+      }
+      if(ritaPrickar) L.circleMarker([lat,lng], { radius:5, weight:1.5,
+        color: har?"#2f8f5b":"#c8102e", fillColor: har?"#5fc48c":"#c8102e",
+        fillOpacity: har?.75:.35 }).addTo(skanlager);
+    }
+  }
+  return {
+    andel: provade ? tackta/provade : 0,
+    ar: median(ar), kval: median(kval),
+    pano: totalt ? panos/totalt : 0,
+    tackta, provade
+  };
+}
+
+function betyg(r){
+  const iar = new Date().getFullYear();
+  let p = r.andel * 100;
+  if(r.kval !== null) p += r.kval * 30;
+  if(r.ar) p += Math.max(0, 20 - (iar - r.ar) * 3);
+  p += r.pano * 25;
+  return p;
+}
+
+async function skannaAlla(){
+  if(!viewer && !token){ status("Anslut med en token först.", "fel"); return; }
+  if(skannar) return;
+  skannar = true;
+  $("skanna-alla").disabled = true; $("skanna").disabled = true;
+  skanlager.clearLayers();
+  $("resultat").hidden = true;
+
+  const resultat = [];
+  for(let i = 0; i < PLATSVAL.length; i++){
+    const p = PLATSVAL[i];
+    status(`Skannar ${p.namn} (${i+1} av ${PLATSVAL.length})…`, "jobbar");
+    try{
+      const r = await skannaRuta(p.lat, p.lng, 700, 3, false);
+      resultat.push({ ...p, ...r, poang: betyg(r) });
+      L.circleMarker([p.lat, p.lng], {
+        radius: 7 + r.andel * 9, weight:2,
+        color: r.andel >= .6 ? "#2f8f5b" : r.andel >= .35 ? "#ffc300" : "#c8102e",
+        fillColor: r.andel >= .6 ? "#5fc48c" : r.andel >= .35 ? "#ffc300" : "#c8102e",
+        fillOpacity:.6
+      }).addTo(skanlager).bindTooltip(`${p.namn}: ${Math.round(r.andel*100)}%`);
+    }catch(f){
+      status("Skanning avbruten: " + f.message, "fel");
+      skannar = false; $("skanna-alla").disabled = false; $("skanna").disabled = false;
+      return;
+    }
+  }
+
+  resultat.sort((a,b) => b.poang - a.poang);
+  const kropp = $("rank-kropp"); kropp.innerHTML = "";
+  resultat.forEach((r, i) => {
+    const tr = document.createElement("tr");
+    if(i === 0) tr.dataset.vinnare = "true";
+    tr.innerHTML =
+      `<td>${r.namn}</td>` +
+      `<td>${Math.round(r.andel*100)}%</td>` +
+      `<td>${r.ar ? Math.round(r.ar) : "—"}</td>` +
+      `<td>${r.kval !== null ? r.kval.toFixed(2) : "—"}</td>` +
+      `<td>${Math.round(r.pano*100)}%</td>`;
+    tr.addEventListener("click", () => {
+      karta.setView([r.lat, r.lng], 16);
+      gaTill(r.lat, r.lng, r.namn);
+    });
+    kropp.appendChild(tr);
+  });
+  $("rank").hidden = false;
+  karta.setView([59.2760, 18.0400], 12);
+
+  const b = resultat[0];
+  status(b.andel >= .5
+    ? `Bäst: ${b.namn} — ${Math.round(b.andel*100)}% täckning. Klicka på raden för att åka dit.`
+    : `Svagt överallt. Bäst är ${b.namn} med ${Math.round(b.andel*100)}%. Överväg ett annat område än Söderort.`,
+    b.andel >= .5 ? "ok" : "fel");
+
+  skannar = false; $("skanna-alla").disabled = false; $("skanna").disabled = false;
+}
+$("skanna-alla").addEventListener("click", skannaAlla);
+
+async function skanna(){
+  if(!viewer){ status("Anslut med en token först.", "fel"); return; }
+  if(skannar) return;
+  skannar = true; $("skanna").disabled = true; skanlager.clearLayers();
+
+  const b = karta.getBounds();
+  const latM = (b.getNorth()-b.getSouth()) * 111320;
+  const lngM = (b.getEast()-b.getWest()) * 111320 * Math.cos(b.getCenter().lat * Math.PI/180);
+  const storst = Math.max(latM, lngM);
+  const n = Math.min(7, Math.max(3, Math.round(storst/130)));
+
+  const rutor = [];
+  for(let i=0;i<n;i++) for(let j=0;j<n;j++) rutor.push({
+    lat: b.getSouth() + (b.getNorth()-b.getSouth())*i/(n-1),
+    lng: b.getWest()  + (b.getEast()-b.getWest())*j/(n-1)
+  });
+
+  let tackta=0, ar=[], kval=[], panos=0, totalt=0;
+  for(let i=0;i<rutor.length;i++){
+    const p = rutor[i];
+    status(`Skannar ${i+1} av ${rutor.length}…`, "jobbar");
+    let t = [];
+    try{ t = await narmaste(p.lat, p.lng, 50, 5); }
+    catch(f){ status("Skanning avbruten: " + f.message, "fel"); break; }
+    const har = t.length > 0;
+    if(har){
+      tackta++;
+      t.forEach(x => { totalt++;
+        if(x.captured_at) ar.push(new Date(x.captured_at).getFullYear());
+        if(typeof x.quality_score === "number") kval.push(x.quality_score);
+        if(x.is_pano) panos++; });
+    }
+    L.circleMarker([p.lat,p.lng], { radius:5, weight:1.5,
+      color: har?"#2f8f5b":"#c8102e", fillColor: har?"#5fc48c":"#c8102e",
+      fillOpacity: har?.75:.35 }).addTo(skanlager);
+  }
+
+  const andel = rutor.length ? tackta/rutor.length : 0;
+  const mAr = median(ar), mKval = median(kval);
+  $("resultat").hidden = false;
+  $("r-andel").textContent = Math.round(andel*100) + "%";
+  $("r-matare").style.width = (andel*100) + "%";
+  $("r-matare").style.background = andel>=.6 ? "#2f8f5b" : andel>=.35 ? "#ffc300" : "#c8102e";
+  $("r-ar").textContent = mAr ? Math.round(mAr) : "—";
+  $("r-kval").textContent = mKval !== null ? mKval.toFixed(2) : "—";
+  $("r-pano").textContent = totalt ? Math.round(panos/totalt*100) + "%" : "—";
+
+  const iar = new Date().getFullYear();
+  let dom, farg;
+  if(andel>=.6 && mKval!==null && mKval>=.45 && mAr && iar-mAr<=6){ dom="Bra område"; farg="#5fc48c"; }
+  else if(andel>=.35){ dom="Tveksamt — prova bredvid"; farg="#ffc300"; }
+  else { dom="För tunn täckning"; farg="#f2778d"; }
+  $("r-dom").textContent = dom; $("r-dom").style.color = farg;
+
+  status(`Skanning klar: ${tackta} av ${rutor.length} rutor har bilder.`, andel>=.6 ? "ok" : "fel");
+  skannar = false; $("skanna").disabled = false;
+}
+$("skanna").addEventListener("click", skanna);
+
+/* ── BYGG: placera frågor ───────────────────────────────── */
+function byggFragelista(){
+  const s = $("valjfraga"); s.innerHTML = "";
+  const anvanda = new Set([...platser, ...nyaPlatser].map(p => p.fragaId));
+  bank.forEach(f => {
+    const o = document.createElement("option");
+    o.value = f.id;
+    o.textContent = (anvanda.has(f.id) ? "✓ " : "")
+      + (KATEGORINAMN[f.kategori] || f.kategori) + " · " + f.fraga.slice(0, 56) + "…";
+    s.appendChild(o);
+  });
+}
+$("placera").addEventListener("click", () => {
+  if(!nuvarande || !nuvarande.geometry){ status("Ladda en bild först.", "fel"); return; }
+  const [lng, lat] = nuvarande.geometry.coordinates;
+  nyaPlatser.push({
+    fragaId: $("valjfraga").value,
+    lat, lng, radius:18,
+    heading: Math.round(bearing), headingTolerance:55,
+    imageId: nuvarande.id, notering:""
+  });
+  ritaPunkter(); byggFragelista();
+  status(`Fråga placerad (${nyaPlatser.length} nya).`, "ok");
+});
+function ritaPunkter(){
+  const ul = $("punkter"); ul.innerHTML = "";
+  punktlager.clearLayers();
+  const alla = [...platser, ...nyaPlatser];
+  $("punkter-tom").hidden = alla.length > 0;
+
+  alla.forEach((p, i) => {
+    const f = bank.find(x => x.id === p.fragaId);
+    L.circleMarker([p.lat, p.lng], { radius:6, weight:2, color:"#0b5aa2",
+      fillColor:"#4d9ede", fillOpacity:.8 }).addTo(punktlager);
+
+    const li = document.createElement("li");
+    li.innerHTML = `<span>${f ? (KATEGORINAMN[f.kategori] || f.kategori) : p.fragaId} · ${Math.round(p.heading)}°</span>`;
+    if(i >= platser.length){
+      const x = document.createElement("button");
+      x.type = "button"; x.textContent = "×";
+      x.setAttribute("aria-label", "Ta bort placering");
+      x.addEventListener("click", () => {
+        nyaPlatser.splice(i - platser.length, 1); ritaPunkter(); byggFragelista();
+      });
+      li.appendChild(x);
+    }
+    ul.appendChild(li);
+  });
+  ritaFramsteg();
+}
+$("exportera").addEventListener("click", async () => {
+  const alla = [...platser, ...nyaPlatser];
+  if(!alla.length){ status("Inga frågor placerade.", "fel"); return; }
+  const text = "window.PLATSER = [\n" + alla.map(p => "  " + JSON.stringify(p)).join(",\n") + "\n];";
+  try{
+    await navigator.clipboard.writeText(text);
+    status(`${alla.length} placeringar kopierade. Klistra in i platser.js.`, "ok");
+  }catch(e){
+    console.log(text);
+    status("Kunde inte kopiera — koden är utskriven i konsolen.", "fel");
+  }
+});
+
+/* ── Sök ────────────────────────────────────────────────── */
+async function sok(){
+  const q = $("sok").value.trim(); if(!q) return;
+  status("Söker plats…", "jobbar");
+  try{
+    const url = `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=5&countrycodes=se&q=${encodeURIComponent(q)}`;
+    const rader = await (await fetch(url)).json();
+    const ul = $("traffar"); ul.innerHTML = "";
+    if(!rader.length){ status("Hittade ingen plats.", "fel"); return; }
+    rader.forEach(r => {
+      const li = document.createElement("li"), b = document.createElement("button");
+      b.type = "button";
+      b.textContent = r.display_name.split(",").slice(0,3).join(", ");
+      b.addEventListener("click", () => {
+        karta.setView([+r.lat, +r.lon], 16); ul.innerHTML = "";
+        gaTill(+r.lat, +r.lon, r.name || "vald plats");
+      });
+      li.appendChild(b); ul.appendChild(li);
+    });
+    status(`${rader.length} platser hittade.`, "ok");
+  }catch(f){ status("Sökningen misslyckades: " + f.message, "fel"); }
+}
+$("sokknapp").addEventListener("click", sok);
+$("sok").addEventListener("keydown", e => { if(e.key === "Enter") sok(); });
+
+/* ── Karta och snabbval ─────────────────────────────────── */
+function byggKarta(){
+  const start = omrade ? [omrade.lat, omrade.lng] : [59.2790, 18.0500];
+  karta = L.map("karta", { zoomControl:false }).setView(start, 13);
+  L.control.zoom({ position:"topright" }).addTo(karta);
+  L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+    { maxZoom:19, attribution:"© OpenStreetMap" }).addTo(karta);
+  skanlager = L.layerGroup().addTo(karta);
+  punktlager = L.layerGroup().addTo(karta);
+  if(omrade) L.circle(start, { radius:omrade.radie, color:"#ffc300", weight:1,
+    fillColor:"#ffc300", fillOpacity:.05, dashArray:"5,5" }).addTo(karta);
+  nal = L.circleMarker(start, { radius:6, color:"#ffc300", weight:2,
+    fillColor:"#ffc300", fillOpacity:.85 }).addTo(karta);
+  karta.on("click", e => gaTill(e.latlng.lat, e.latlng.lng, "vald punkt"));
+}
+function byggChips(){
+  const box = $("chips");
+  PLATSVAL.forEach(p => {
+    const b = document.createElement("button");
+    b.className = "chip"; b.type = "button"; b.setAttribute("aria-pressed","false");
+    b.textContent = p.namn;
+    b.addEventListener("click", () => {
+      box.querySelectorAll(".chip").forEach(x => x.setAttribute("aria-pressed","false"));
+      b.setAttribute("aria-pressed","true");
+      karta.setView([p.lat,p.lng], 16);
+      gaTill(p.lat, p.lng, p.namn);
+    });
+    box.appendChild(b);
+  });
+}
+
+/* ── Granska ────────────────────────────────────────────── */
+const granskning = {};   // id -> { status:"ok"|"andra", not:"" }
+
+function ritaGranskning(){
+  const lista = $("g-lista");
+  lista.innerHTML = "";
+
+  bank.forEach(f => {
+    const kort = document.createElement("div");
+    kort.className = "fragekort";
+    kort.dataset.oppen = "false";
+    if(granskning[f.id]) kort.dataset.status = granskning[f.id].status;
+
+    const knapp = document.createElement("button");
+    knapp.type = "button";
+    knapp.className = "fragekort__knapp";
+    knapp.innerHTML =
+      `<span class="fragekort__id">${f.id}</span>` +
+      `<span class="fragekort__fraga">${f.fraga}</span>` +
+      `<span class="fragekort__flagga ${f.kallaKontrollerad ? "flagga--kall" : "flagga--ejkall"}">` +
+      `${f.kallaKontrollerad ? "KÄLLA OK" : "EJ KÄLLA"}</span>`;
+    knapp.addEventListener("click", () => {
+      kort.dataset.oppen = kort.dataset.oppen === "true" ? "false" : "true";
+    });
+
+    const kropp = document.createElement("div");
+    kropp.className = "fragekort__kropp";
+
+    const ul = document.createElement("ul");
+    ul.className = "alt";
+    f.alternativ.forEach((a, i) => {
+      const li = document.createElement("li");
+      li.textContent = a;
+      if(i === f.ratt) li.dataset.ratt = "true";
+      ul.appendChild(li);
+    });
+    kropp.appendChild(ul);
+
+    const forkl = document.createElement("div");
+    forkl.className = "forklaring";
+    forkl.innerHTML = `<p>${f.forklaring}</p><div class="regel">Källa: ${f.regel}</div>`;
+    kropp.appendChild(forkl);
+
+    const not = document.createElement("textarea");
+    not.className = "granska__not";
+    not.placeholder = "Anteckning — vad behöver ändras?";
+    not.value = granskning[f.id] ? granskning[f.id].not : "";
+    not.addEventListener("input", () => {
+      if(!granskning[f.id]) granskning[f.id] = { status:"andra", not:"" };
+      granskning[f.id].not = not.value;
+    });
+
+    const rad = document.createElement("div");
+    rad.className = "granskaknappar";
+
+    const ok = document.createElement("button");
+    ok.type = "button"; ok.className = "knapp knapp--gron"; ok.textContent = "Godkänn";
+    ok.addEventListener("click", () => {
+      granskning[f.id] = { status:"ok", not:not.value };
+      kort.dataset.status = "ok"; raknaGranskning();
+    });
+
+    const andra = document.createElement("button");
+    andra.type = "button"; andra.className = "knapp knapp--rod"; andra.textContent = "Behöver ändras";
+    andra.addEventListener("click", () => {
+      granskning[f.id] = { status:"andra", not:not.value };
+      kort.dataset.status = "andra"; raknaGranskning();
+    });
+
+    rad.appendChild(ok); rad.appendChild(andra);
+    kropp.appendChild(rad);
+    kropp.appendChild(not);
+
+    kort.appendChild(knapp); kort.appendChild(kropp);
+    lista.appendChild(kort);
+  });
+  raknaGranskning();
+}
+
+function raknaGranskning(){
+  const klara = Object.keys(granskning).length;
+  const okAntal = Object.values(granskning).filter(g => g.status === "ok").length;
+  const ejKalla = bank.filter(f => !f.kallaKontrollerad).length;
+  $("g-rakning").textContent =
+    `${klara} av ${bank.length} genomgångna · ${okAntal} godkända · ${ejKalla} utan källkontroll`;
+}
+
+$("g-exportera").addEventListener("click", async () => {
+  if(!Object.keys(granskning).length){ status("Inget att exportera ännu.", "fel"); return; }
+  const rader = bank.map(f => {
+    const g = granskning[f.id];
+    if(!g) return `${f.id}: EJ GENOMGÅNGEN`;
+    return `${f.id}: ${g.status === "ok" ? "GODKÄND" : "BEHÖVER ÄNDRAS"}`
+         + (g.not ? `\n    ${g.not}` : "");
+  }).join("\n");
+  const text = "GRANSKNING " + new Date().toLocaleDateString("sv-SE") + "\n\n" + rader;
+  try{
+    await navigator.clipboard.writeText(text);
+    status("Granskningen kopierad till urklipp.", "ok");
+  }catch(e){
+    console.log(text);
+    status("Kunde inte kopiera — granskningen är utskriven i konsolen.", "fel");
+  }
+});
+
+/* ── Lägen ──────────────────────────────────────────────── */
+function byt(nytt){
+  lage = nytt;
+  document.body.dataset.lage = nytt;
+  $("lage-ova").setAttribute("aria-pressed", String(nytt === "ova"));
+  $("lage-bygg").setAttribute("aria-pressed", String(nytt === "bygg"));
+  $("lage-granska").setAttribute("aria-pressed", String(nytt === "granska"));
+  $("blad").dataset.oppen = "false"; aktivFraga = null;
+
+  if(nytt === "ova" && !platser.length){
+    $("tom").hidden = false;
+    $("tom-rubrik").textContent = "Inga frågor placerade";
+    $("tom-text").innerHTML = "Byt till <strong>Bygg</strong>, kör till en plats som passar en fråga, och tryck <strong>Placera fråga här</strong>. Exportera sedan och klistra in i platser.js.";
+  } else if(nytt === "ova" && viewer){
+    $("tom").hidden = true;
+  }
+  setTimeout(() => {
+    if(viewer) viewer.resize();
+    if(karta) karta.invalidateSize();
+    ritaKompass();
+  }, 70);
+}
+$("lage-ova").addEventListener("click", () => byt("ova"));
+$("lage-bygg").addEventListener("click", () => byt("bygg"));
+$("lage-granska").addEventListener("click", () => byt("granska"));
+$("panelknapp").addEventListener("click", () => {
+  const s = $("sida"), o = s.dataset.oppen === "true";
+  s.dataset.oppen = String(!o);
+  $("panelknapp").setAttribute("aria-expanded", String(!o));
+});
+
+/* ── Start ──────────────────────────────────────────────── */
+$("starta").addEventListener("click", starta);
+$("token").addEventListener("keydown", e => { if(e.key === "Enter") starta(); });
+
+function starta(){
+  const t = $("token").value.trim() || INBAKAD_TOKEN;
+  if(!t){ status("Klistra in en Mapillary-token.", "fel"); return; }
+  token = t;
+  const start = platser.length ? platser[0] : (omrade || PLATSVAL[0]);
+  if(viewer){ gaTill(start.lat, start.lng, "startpunkten"); return; }
+
+  try{
+    viewer = new mapillary.Viewer({ accessToken:token, container:"mly", component:{ cover:false } });
+  }catch(f){ status("Kunde inte starta visaren: " + f.message, "fel"); return; }
+
+  viewer.on("image", async e => {
+    try{ visaData(await bildinfo(e.image.id)); }catch(f){}
+  });
+
+  setInterval(async () => {
+    if(!viewer) return;
+    try{
+      const b = await viewer.getBearing();
+      if(typeof b === "number" && Math.abs(b - bearing) > 0.15){
+        bearing = b; ritaKompass();
+        $("d-rikt").textContent = Math.round(b) + "° " + VADERSTRECK[Math.round(b/45) % 8];
+        if(lage === "ova" && nuvarande && nuvarande.geometry){
+          const [lng, lat] = nuvarande.geometry.coordinates;
+          kollaUtlosare(lat, lng);
+        }
+      }
+    }catch(e){}
+  }, 130);
+
+  window.addEventListener("resize", () => { ritaKompass(); if(viewer) viewer.resize(); });
+  status("Ansluten.", "jobbar");
+  gaTill(start.lat, start.lng, "startpunkten");
+}
+
+byggBand(); byggKarta(); byggChips(); byggFragelista(); ritaPunkter(); ritaGranskning();
+byt(platser.length ? "ova" : "bygg");
+if(INBAKAD_TOKEN) starta();
+</script>
+</body>
+</html>
