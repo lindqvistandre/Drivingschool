@@ -56,6 +56,52 @@ canvas{display:block}
 .filval{font-size:12px;color:var(--dov);display:flex;gap:8px;align-items:center;flex-wrap:wrap;
   justify-content:center}
 .filval input{font-size:11px;color:var(--dov);max-width:200px}
+.avsluta{position:absolute;right:14px;top:86px;background:rgba(25,28,32,.84);
+  border:1px solid var(--linje);border-radius:3px;padding:6px 11px;
+  font-family:var(--display);font-weight:600;font-size:13px;letter-spacing:.05em;
+  text-transform:uppercase;pointer-events:auto}
+.fragerutan{position:absolute;inset:0;z-index:55;display:grid;align-content:end;
+  padding:0;background:rgba(14,16,19,.55);pointer-events:auto;
+  opacity:0;visibility:hidden;transition:opacity .22s ease}
+.fragerutan[data-pa="true"]{opacity:1;visibility:visible}
+.fr__kort{background:var(--asfalt);border-top:3px solid var(--gul);
+  border-radius:12px 12px 0 0;padding:17px 18px 20px;max-height:78dvh;overflow-y:auto;
+  width:min(620px,100%);margin:0 auto}
+.fr__tagg{font-family:var(--mono);font-size:9.5px;letter-spacing:.15em;
+  color:#191c20;background:var(--gul);padding:3px 8px;border-radius:2px}
+.fr__kort h3{font-family:var(--brod);font-weight:600;font-size:17.5px;
+  line-height:1.42;margin:11px 0 14px}
+.fr__svar{display:grid;gap:7px}
+.fr__svar button{text-align:left;background:var(--panel);border:1px solid transparent;
+  border-left:3px solid var(--linje);border-radius:3px;padding:12px 14px;
+  font-size:14.5px;line-height:1.4;color:var(--vit)}
+.fr__svar button[data-utfall="ratt"]{border-left-color:var(--gron);background:rgba(47,143,91,.17)}
+.fr__svar button[data-utfall="fel"]{border-left-color:var(--rod);background:rgba(200,16,46,.15)}
+.fr__forklaring{margin-top:14px;padding:13px 15px;background:var(--panel);
+  border-left:3px solid var(--gul);border-radius:3px}
+.fr__forklaring p{margin:0;font-size:13.5px;line-height:1.6}
+.fr__regel{margin-top:10px;font-family:var(--mono);font-size:10.5px;color:var(--dov);line-height:1.5}
+#fr-fortsatt{width:100%;margin-top:14px}
+.sam{position:absolute;inset:0;z-index:60;display:grid;place-content:center;
+  padding:22px;background:rgba(14,16,19,.86);pointer-events:auto;
+  opacity:0;visibility:hidden;transition:opacity .2s ease}
+.sam[data-pa="true"]{opacity:1;visibility:visible}
+.sam__kort{background:var(--asfalt);border:1px solid var(--linje);
+  border-top:3px solid var(--gul);border-radius:5px;padding:22px;
+  width:min(460px,88vw);max-height:80dvh;overflow-y:auto}
+.sam__kort h2{font-family:var(--display);font-weight:700;font-size:26px;
+  letter-spacing:.06em;text-transform:uppercase;margin:0 0 4px}
+.sam__rubrik{font-family:var(--mono);font-size:11.5px;color:var(--gul);
+  letter-spacing:.08em;margin:0 0 16px}
+.sam-rad{display:flex;gap:12px;align-items:flex-start;padding:10px 0;
+  border-top:1px solid var(--linje)}
+.sam-rad b{font-family:var(--display);font-size:19px;color:var(--rod);flex:0 0 36px}
+.sam-rad span{font-size:13.5px;line-height:1.45}
+.sam-rad em{display:block;font-family:var(--mono);font-size:10.5px;color:var(--dov);
+  font-style:normal;margin-top:3px}
+.sam-bra{color:#5fc48c;font-size:15px;margin:0;padding:12px 0}
+.sam__knappar{display:flex;gap:8px;margin-top:18px}
+.sam__knappar .knapp{flex:1}
 .inmatning{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);
   font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;
   color:var(--dov);background:rgba(25,28,32,.8);border:1px solid var(--linje);
@@ -104,6 +150,13 @@ canvas{display:block}
   border-left:5px solid transparent;border-right:5px solid transparent;border-top:8px solid var(--gul)}
 
 /* Reglage */
+.blink{position:absolute;left:50%;bottom:100px;transform:translateX(-50%);
+  display:flex;gap:46px;pointer-events:auto}
+.blink__pil{width:56px;height:46px;border-radius:7px;background:rgba(46,52,59,.9);
+  border:1px solid var(--linje);display:grid;place-content:center;
+  font-family:var(--display);font-weight:700;font-size:20px;color:var(--dov);
+  user-select:none;-webkit-user-select:none}
+.blink__pil[data-pa="true"]{background:var(--gron);color:#fff;border-color:var(--gron)}
 .reglage{position:absolute;right:14px;bottom:14px;display:grid;gap:9px;
   grid-template-columns:74px 74px;pointer-events:auto}
 .pedal{height:74px;border-radius:9px;background:rgba(46,52,59,.9);border:1px solid var(--linje);
@@ -148,7 +201,8 @@ canvas{display:block}
 <div class="hud" id="hud" hidden>
   <div class="kompassband" id="kompassband"><b id="kband"></b><em></em></div>
   <div class="gata" id="gata">—</div>
-  <div class="anmbricka" id="anmbricka">Anmärkningar <b id="anmrakning">0</b></div>
+  <div class="anmbricka" id="anmbricka">Anmärkningar <b id="anmrakning">0</b> ·
+    Rätt <b id="rattrakning">0</b> av <b id="fragerakning">0</b></div>
   <div class="anmtext" id="anm" data-pa="false">—</div>
   <div class="notis" id="notis" data-pa="false">—</div>
   <div class="matartavla">
@@ -156,9 +210,39 @@ canvas{display:block}
     <div class="skylt" id="granssskylt">50</div>
   </div>
   <button class="spara" id="spara">Spara världen</button>
+  <button class="avsluta" id="avsluta">Avsluta pass</button>
+
+  <div class="fragerutan" id="fragerutan" data-pa="false">
+    <div class="fr__kort">
+      <span class="fr__tagg" id="fr-kategori">—</span>
+      <h3 id="fr-text">—</h3>
+      <div class="fr__svar" id="fr-svar"></div>
+      <div class="fr__forklaring" id="fr-forklaring" hidden>
+        <p id="fr-text2"></p>
+        <div class="fr__regel" id="fr-regel"></div>
+      </div>
+      <button class="knapp knapp--gul" id="fr-fortsatt">Kör vidare</button>
+    </div>
+  </div>
+
+  <div class="sam" id="sammanfattning" data-pa="false">
+    <div class="sam__kort">
+      <h2>Körpasset</h2>
+      <p class="sam__rubrik" id="sam-rubrik">—</p>
+      <div id="sam-kropp"></div>
+      <div class="sam__knappar">
+        <button class="knapp" id="sam-stang">Fortsätt köra</button>
+        <button class="knapp knapp--gul" id="sam-nollstall">Nollställ</button>
+      </div>
+    </div>
+  </div>
   <div class="inmatning" id="inmatning">ingen inmatning</div>
   <div class="hjalp" style="top:88px">
     W / ↑ gas<br>S / ↓ broms och back<br>A D / ← → styr<br>Mellanslag handbroms<br>R återställ
+  </div>
+  <div class="blink" id="blink">
+    <div class="blink__pil" id="blink-v">◀</div>
+    <div class="blink__pil" id="blink-h">▶</div>
   </div>
   <div class="reglage">
     <div class="pedal pedal--broms" id="p-broms">▼</div>
@@ -168,6 +252,7 @@ canvas{display:block}
   </div>
 </div>
 
+<script src="fragebank.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
 "use strict";
@@ -246,7 +331,28 @@ function fraga(o){
 out geom;`;
 }
 
+function cacheNyckel(o){ return "korkort-varld-" + o.namn; }
+function lasCache(o){
+  try{
+    const d = JSON.parse(localStorage.getItem(cacheNyckel(o)) || "null");
+    if(!d || !d.element || !d.element.length) return null;
+    const dagar = (Date.now() - d.tid) / 86400000;
+    if(dagar > 30) return null;
+    return { element:d.element, dagar };
+  }catch(e){ return null; }
+}
+function sparaCache(o, element){
+  try{ localStorage.setItem(cacheNyckel(o),
+    JSON.stringify({ tid:Date.now(), element })); return true; }
+  catch(e){ return false; }        // för stort för webbläsarens lagring
+}
+
 async function hamtaOSM(o){
+  const cache = lasCache(o);
+  if(cache){
+    logg(`Använder sparad värld (${Math.round(cache.dagar)} dagar gammal, ${cache.element.length} element)`);
+    return cache.element;
+  }
   const q = fraga(o);
   let natverksfel = 0, sistaFel = null;
 
@@ -276,6 +382,7 @@ async function hamtaOSM(o){
           logg_.push(`${s.namn} ${metod}: tomt svar`);
           continue;
         }
+        sparaCache(o, d.elements);
         return d.elements;
       }catch(f){
         if(f.name === "TypeError"){ natverksfel++; logg_.push(`${s.namn} ${metod}: blockerad`); }
@@ -567,6 +674,7 @@ function byggByggnader(byggnader){
     let h = 9;
     if(b.tags.height) h = parseFloat(b.tags.height) || 9;
     else if(b.tags["building:levels"]) h = (parseFloat(b.tags["building:levels"]) || 3) * 3.1;
+    registreraHus(p);
     let geo;
     try{ geo = new THREE.ExtrudeGeometry(form, { depth:h, bevelEnabled:false }); }
     catch(e){ return; }
@@ -655,6 +763,7 @@ function byggSkyltar(noder){
   noder.slice(0, 700).forEach(n => {
     if(!tex[n.tags.highway]) return;
     const p = tillMeter(n.lat, n.lon);
+    if(n.tags.highway === "traffic_signals"){ byggSignal(p.x, p.z); return; }
     stallSkylt(tex[n.tags.highway], p.x, p.z, 1.5, n.tags.highway);
   });
 
@@ -692,6 +801,27 @@ function byggSkyltar(noder){
   });
 
   logg(`${satta} väjningsplikter och ${fartSatta} hastighetsskyltar härledda ur vägnätet`);
+}
+
+/* B3: en riktig signalstolpe med tre lampor */
+function byggSignal(x, z){
+  const g = new THREE.Group();
+  const stolpe = new THREE.Mesh(new THREE.CylinderGeometry(0.07,0.07,3.2,6),
+    new THREE.MeshLambertMaterial({ color:0x6f757b }));
+  stolpe.position.y = 1.6; g.add(stolpe);
+  const lada = new THREE.Mesh(new THREE.BoxGeometry(0.5,1.35,0.3),
+    new THREE.MeshLambertMaterial({ color:0x24282c }));
+  lada.position.y = 3.6; g.add(lada);
+  [[0.42,0xc8102e],[0,0x3a3f44],[-0.42,0x3a3f44]].forEach(([dy,f]) => {
+    const l = new THREE.Mesh(new THREE.SphereGeometry(0.16,8,6),
+      new THREE.MeshBasicMaterial({ color:f }));
+    l.position.set(0, 3.6+dy, 0.17); g.add(l);
+  });
+  // Den översta lampan används som tillståndsvisare
+  const lampa = g.children[2];
+  g.position.set(x, 0, z);
+  scen.add(g);
+  signaler.push({ x, z, lage:"rott", tid:4 + Math.random()*10, lampa });
 }
 
 function narmasteStoraVag(x, z){
@@ -796,10 +926,50 @@ function nyTrafikbil(naraX, naraZ){
            x:nod.x, z:nod.z, kurs:0 };
 }
 
+/* A2: ska bilen bromsa? Tre skäl — någon framför, väjningsplikt i
+   mynningen, eller rött ljus. */
+function trafikSkaBromsa(b){
+  const framX = b.x + Math.sin(b.kurs)*14, framZ = b.z + Math.cos(b.kurs)*14;
+
+  // Någon framför på samma körfält
+  for(const a of trafik){
+    if(a === b) continue;
+    const d = Math.hypot(a.x - framX, a.z - framZ);
+    if(d < 7 && riktningsskillnad(a.kurs*180/Math.PI, b.kurs*180/Math.PI) < 60) return true;
+  }
+  // Spelaren framför
+  if(Math.hypot(korning.x - framX, korning.z - framZ) < 8) return true;
+
+  // Väjningsplikt: liten gata som närmar sig en större
+  if(!b.seg.stor){
+    const kvar = Math.hypot(b.till.x - b.x, b.till.z - b.z);
+    if(kvar < 22 && b.till.ut.some(u => u.seg.stor)){
+      for(const a of trafik){
+        if(a === b || !a.seg.stor) continue;
+        if(Math.hypot(a.x - b.till.x, a.z - b.till.z) < 34) return true;
+      }
+      if(Math.hypot(korning.x - b.till.x, korning.z - b.till.z) < 30
+         && Math.abs(korning.fart) > 3) return true;
+    }
+  }
+  // Rött ljus
+  for(const s of signaler){
+    if(s.lage !== "rott") continue;
+    if(Math.hypot(s.x - framX, s.z - framZ) < 13) return true;
+  }
+  return false;
+}
+
 function flyttaTrafik(dt){
   for(const b of trafik){
     const dx = b.till.x - b.fran.x, dz = b.till.z - b.fran.z;
     const len = Math.hypot(dx, dz) || 1;
+
+    const maxFart = b.seg.grans/3.6 * 0.85;
+    b.fart = trafikSkaBromsa(b)
+      ? Math.max(0, b.fart - 7*dt)
+      : Math.min(maxFart, b.fart + 2.4*dt);
+
     b.t += (b.fart * dt) / len;
 
     if(b.t >= 1){
@@ -899,6 +1069,8 @@ addEventListener("keydown", e => {
   if(["arrowup","arrowdown","arrowleft","arrowright"," "].includes(e.key.toLowerCase()))
     e.preventDefault();
   if(e.key.toLowerCase() === "r") aterstall();
+  if(e.key.toLowerCase() === "q") blinkers = blinkers === -1 ? 0 : -1;
+  if(e.key.toLowerCase() === "e") blinkers = blinkers ===  1 ? 0 :  1;
 });
 addEventListener("keyup", e => { tangent[e.key.toLowerCase()] = false; });
 
@@ -938,6 +1110,14 @@ function pedal(id, namn){
   ["pointerup","pointercancel","lostpointercapture"].forEach(h =>
     el.addEventListener(h, slapp));
 }
+["blink-v","blink-h"].forEach((id, i) => {
+  $(id).addEventListener("pointerdown", e => {
+    e.preventDefault();
+    const v = i === 0 ? -1 : 1;
+    blinkers = blinkers === v ? 0 : v;
+    senasteKalla = "pekning";
+  });
+});
 pedal("p-gas","gas"); pedal("p-broms","broms");
 pedal("p-vanster","vanster"); pedal("p-hoger","hoger");
 
@@ -962,7 +1142,12 @@ const REGLER = {
                   regel:"Trafikförordningen 3 kap. 21 §" },
   overgang:     { text:"För fort vid övergångsställe",
                   regel:"Trafikförordningen 3 kap. 15 § p. 3" },
-  utanfor:      { text:"Utanför vägbanan", regel:"" }
+  utanfor:      { text:"Utanför vägbanan", regel:"" },
+  krockHus:     { text:"Du körde in i ett hus", regel:"" },
+  krockBil:     { text:"Du körde in i en annan bil", regel:"" },
+  rottLjus:     { text:"Du körde mot rött", regel:"Vägmärkesförordningen 3 kap." },
+  tecken:       { text:"Du svängde utan att blinka",
+                  regel:"Trafikförordningen 3 kap. 65 §" }
 };
 
 function anmark(typ){
@@ -987,6 +1172,60 @@ function sidolage(seg){
   const sida = vx*uz - vz*ux;                       // kryssprodukt i planet
   const medstroms = (Math.sin(korning.kurs)*ux + Math.cos(korning.kurs)*uz) > 0;
   return medstroms ? sida : -sida;
+}
+
+/* A1: kollision. Rutnät över husens fotavtryck plus avstånd till trafiken. */
+function registreraHus(punkter){
+  let minX=1e9, maxX=-1e9, minZ=1e9, maxZ=-1e9;
+  punkter.forEach(p => { minX=Math.min(minX,p.x); maxX=Math.max(maxX,p.x);
+                         minZ=Math.min(minZ,p.z); maxZ=Math.max(maxZ,p.z); });
+  const ruta = { minX, maxX, minZ, maxZ };
+  for(let i=Math.floor(minX/RUTA); i<=Math.floor(maxX/RUTA); i++)
+    for(let j=Math.floor(minZ/RUTA); j<=Math.floor(maxZ/RUTA); j++){
+      const n = i+":"+j;
+      if(!husrutnat.has(n)) husrutnat.set(n, []);
+      husrutnat.get(n).push(ruta);
+    }
+}
+
+function kollision(){
+  // Hus
+  const i = Math.floor(korning.x/RUTA), j = Math.floor(korning.z/RUTA);
+  for(let a=-1; a<=1; a++) for(let b=-1; b<=1; b++){
+    const lista = husrutnat.get((i+a)+":"+(j+b));
+    if(!lista) continue;
+    for(const r of lista){
+      if(korning.x > r.minX-1.1 && korning.x < r.maxX+1.1 &&
+         korning.z > r.minZ-1.1 && korning.z < r.maxZ+1.1) return "hus";
+    }
+  }
+  // Trafik
+  for(const b of trafik){
+    if(Math.hypot(b.x - korning.x, b.z - korning.z) < 3.4) return "bil";
+  }
+  return null;
+}
+
+function hanteraKollision(typ){
+  const fartVid = Math.abs(korning.fart)*3.6;
+  // Backa ut ur det man körde in i och stanna
+  korning.x -= Math.sin(korning.kurs) * Math.sign(korning.fart) * 1.6;
+  korning.z -= Math.cos(korning.kurs) * Math.sign(korning.fart) * 1.6;
+  korning.fart = 0;
+  if(fartVid > 6) anmark(typ === "hus" ? "krockHus" : "krockBil");
+}
+
+/* B3: trafiksignaler som faktiskt växlar */
+function uppdateraSignaler(dt){
+  for(const s of signaler){
+    s.tid -= dt;
+    if(s.tid <= 0){
+      s.lage = s.lage === "gront" ? "gult" : s.lage === "gult" ? "rott" : "gront";
+      s.tid  = s.lage === "gront" ? 14 : s.lage === "gult" ? 3 : 12;
+      const f = s.lage === "gront" ? 0x2f8f5b : s.lage === "gult" ? 0xffc300 : 0xc8102e;
+      s.lampa.material.color.setHex(f);
+    }
+  }
 }
 
 function bedom(dt, nara){
@@ -1026,6 +1265,33 @@ function bedom(dt, nara){
   }
 
   if(utanforVag && kmh > 10) anmark("utanfor");
+
+  // A4: svängde du utan att blinka? Mät hur mycket kursen ändrats
+  // den senaste sekunden och jämför med vad blinkersen sa.
+  kurshistorik.push({ k:korning.kurs, t:performance.now() });
+  while(kurshistorik.length && performance.now() - kurshistorik[0].t > 1400)
+    kurshistorik.shift();
+  if(kurshistorik.length > 8 && kmh > 8){
+    const d = riktningsskillnad(kurshistorik[0].k*180/Math.PI,
+                                korning.kurs*180/Math.PI);
+    if(d > 55){
+      const svangdeVanster =
+        ((korning.kurs - kurshistorik[0].k + Math.PI*3) % (Math.PI*2)) - Math.PI < 0;
+      const ratt = svangdeVanster ? -1 : 1;
+      if(blinkers !== ratt && !blinkersVidSvang) anmark("tecken");
+      kurshistorik.length = 0;
+      blinkers = 0;
+    }
+  }
+  blinkersVidSvang = blinkers !== 0;
+
+  // Rött ljus
+  for(const s of signaler){
+    if(s.lage !== "rott") continue;
+    const fram = Math.hypot(s.x - (korning.x + Math.sin(korning.kurs)*5),
+                            s.z - (korning.z + Math.cos(korning.kurs)*5));
+    if(fram < 7 && kmh > 12){ anmark("rottLjus"); break; }
+  }
 }
 
 /* ═══ Uppdatering per bildruta ═══ */
@@ -1035,6 +1301,7 @@ function uppdatera(dt){
   const vanst  = tangent["a"] || tangent["arrowleft"]  || pekreglage.vanster;
   const hoger  = tangent["d"] || tangent["arrowright"] || pekreglage.hoger;
   const hand   = tangent[" "];
+  if(aktivFraga){ korning.fart = 0; }
 
   // Visa vad appen faktiskt uppfattar — gör det möjligt att se om problemet
   // ligger i reglagen eller i fysiken.
@@ -1074,6 +1341,7 @@ function uppdatera(dt){
   korning.x += Math.sin(korning.kurs) * korning.fart * dt;
   korning.z += Math.cos(korning.kurs) * korning.fart * dt;
 
+  korstrackaM += Math.abs(korning.fart) * dt;
   bil.position.set(korning.x, 0, korning.z);
   bil.rotation.y = korning.kurs;
 
@@ -1091,6 +1359,9 @@ function uppdatera(dt){
       s.mesh.lookAt(kamera.position);
   });
 
+  const traff = kollision();
+  if(traff) hanteraKollision(traff);
+  uppdateraSignaler(dt);
   flyttaTrafik(dt);
 
   // Var är vi?
@@ -1102,12 +1373,16 @@ function uppdatera(dt){
   } else utanforVag = true;
 
   bedom(dt, n);
+  kollaFragepunkt();
   ritaHUD();
 }
 
 let hudRakning = 0;
 function ritaHUD(){
   $("farttext").textContent = Math.round(Math.abs(korning.fart) * 3.6);
+  const blink = Math.floor(performance.now()/450) % 2 === 0;
+  $("blink-v").dataset.pa = String(blinkers === -1 && blink);
+  $("blink-h").dataset.pa = String(blinkers ===  1 && blink);
   ritaKompass();
   if(++hudRakning % 10) return;
   $("granssskylt").textContent = aktuellGrans;
@@ -1121,6 +1396,161 @@ function visaNotis(t){
   const n = $("notis");
   if(t){ n.textContent = t; n.dataset.pa = "true"; }
   else n.dataset.pa = "false";
+}
+
+/* A3: frågorna in i världen.
+   Frågan placeras där situationen den handlar om faktiskt finns:
+   väjningsfrågor i gatumynningar, oskyddade vid övergångsställen,
+   hastighet där gränsen ändras, vägmärken vid skyltar. */
+/* Varje situation har flera godtagbara kategorier, i fallande ordning.
+   Det finns fler gatumynningar än väjningsfrågor, så utan andrahandsval
+   hamnar merparten av frågorna på fel sorts plats. */
+const SITUATION = {
+  give_way:        ["vajning", "placering", "skyltar"],
+  traffic_signals: ["vajning", "skyltar", "placering"],
+  crossing:        ["oskyddade", "parkering", "hastighet"],
+  fart:            ["hastighet", "placering"],
+  stop:            ["skyltar", "vajning"]
+};
+
+function placeraFragor(){
+  const bank = window.FRAGEBANK || [];
+  if(!bank.length){ logg("Frågebanken kunde inte laddas"); return 0; }
+
+  const kvar = {};
+  bank.forEach(f => (kvar[f.kategori] = kvar[f.kategori] || []).push(f));
+  Object.values(kvar).forEach(l => l.sort(() => Math.random()-0.5));
+  const alla = bank.slice().sort(() => Math.random()-0.5);
+  const anvanda = new Set();        // en fråga får bara placeras en gång
+
+  const platser = skyltlista.filter(s => SITUATION[s.typ]).sort(() => Math.random()-0.5);
+  fragepunkter = [];
+
+  for(const s of platser){
+    if(anvanda.size >= bank.length) break;      // banken slut
+    let f = null;
+    for(const kat of SITUATION[s.typ]){
+      const lista = kvar[kat];
+      while(lista && lista.length && !f){
+        const k = lista.pop();
+        if(!anvanda.has(k.id)) f = k;
+      }
+      if(f) break;
+    }
+    while(!f && alla.length){
+      const k = alla.pop();
+      if(!anvanda.has(k.id)) f = k;
+    }
+    if(!f) break;
+    anvanda.add(f.id);
+    fragepunkter.push({ x:s.x, z:s.z, fraga:f, klar:false });
+  }
+
+  $("fragerakning").textContent = fragepunkter.length;
+  return fragepunkter.length;
+}
+
+function kollaFragepunkt(){
+  if(aktivFraga || $("sammanfattning").dataset.pa === "true") return;
+  for(const p of fragepunkter){
+    if(p.klar) continue;
+    if(Math.hypot(p.x - korning.x, p.z - korning.z) > 26) continue;
+    p.klar = true;
+    oppnaFraga(p.fraga);
+    return;
+  }
+}
+
+function oppnaFraga(f){
+  aktivFraga = f;
+  korning.fart = 0;
+  $("fr-kategori").textContent = (f.kategori || "").toUpperCase();
+  $("fr-text").textContent = f.fraga;
+  $("fr-forklaring").hidden = true;
+  $("fr-fortsatt").textContent = "Hoppa över";
+  const box = $("fr-svar"); box.innerHTML = "";
+  f.alternativ.forEach((text, i) => {
+    const b = document.createElement("button");
+    b.type = "button"; b.textContent = text;
+    b.addEventListener("click", () => svaraFraga(i));
+    box.appendChild(b);
+  });
+  $("fragerutan").dataset.pa = "true";
+}
+
+function svaraFraga(index){
+  const f = aktivFraga; if(!f) return;
+  const ratt = index === f.ratt;
+  [...$("fr-svar").children].forEach((b, i) => {
+    b.disabled = true;
+    if(i === f.ratt) b.dataset.utfall = "ratt";
+    else if(i === index) b.dataset.utfall = "fel";
+  });
+  $("fr-text2").textContent = f.forklaring;
+  $("fr-regel").textContent = "Källa: " + f.regel +
+    (f.kallaKontrollerad ? "" : "  ·  paragraf ej kontrollerad");
+  $("fr-forklaring").hidden = false;
+  $("fr-fortsatt").textContent = "Kör vidare";
+  besvarade[f.id] = { forsta: ratt };
+  $("rattrakning").textContent =
+    Object.values(besvarade).filter(v => v.forsta).length;
+}
+
+/* A5: sammanfattning av körningen */
+function visaSammanfattning(){
+  const rakning = {};
+  anmarkningar.forEach(a => rakning[a.typ] = (rakning[a.typ]||0) + 1);
+  const poster = Object.entries(rakning).sort((a,b) => b[1]-a[1]);
+  const kropp = $("sam-kropp");
+  kropp.innerHTML = "";
+
+  if(!poster.length){
+    kropp.innerHTML = '<p class="sam-bra">Inga anmärkningar. Snyggt kört.</p>';
+  } else {
+    poster.forEach(([typ, n]) => {
+      const r = REGLER[typ];
+      const d = document.createElement("div");
+      d.className = "sam-rad";
+      d.innerHTML = `<b>${n}×</b><span>${r.text}` +
+        (r.regel ? `<em>${r.regel}</em>` : "") + `</span>`;
+      kropp.appendChild(d);
+    });
+  }
+  const km = (korstrackaM/1000).toFixed(2);
+  $("sam-rubrik").textContent = `${km} km körda · ${anmarkningar.length} anmärkningar`;
+  $("sammanfattning").dataset.pa = "true";
+  sparaFramsteg();
+}
+$("avsluta").addEventListener("click", visaSammanfattning);
+$("fr-fortsatt").addEventListener("click", () => {
+  $("fragerutan").dataset.pa = "false";
+  aktivFraga = null;
+});
+$("sam-stang").addEventListener("click", () => {
+  $("sammanfattning").dataset.pa = "false";
+});
+$("sam-nollstall").addEventListener("click", () => {
+  anmarkningar = []; senasteAnmarkning = {}; korstrackaM = 0;
+  $("anmrakning").textContent = "0";
+  $("sammanfattning").dataset.pa = "false";
+  sparaFramsteg();
+});
+
+/* B2: spara framsteg mellan besök */
+function sparaFramsteg(){
+  try{
+    localStorage.setItem("korkort-framsteg", JSON.stringify({
+      anmarkningar: anmarkningar.map(a => a.typ),
+      km: korstrackaM, omrade: valtOmrade.namn
+    }));
+  }catch(e){}
+}
+function lasFramsteg(){
+  try{
+    const d = JSON.parse(localStorage.getItem("korkort-framsteg") || "null");
+    if(d && d.km) return d;
+  }catch(e){}
+  return null;
 }
 
 /* ═══ Start ═══ */
@@ -1159,6 +1589,8 @@ async function starta(element){
     const t = nyTrafikbil(korning.x, korning.z);
     if(t) trafik.push(t);
   }
+  const antalFragor = placeraFragor();
+  logg(`${antalFragor} frågor utplacerade i världen`);
   byggKompass();
   framdrift(1);
 
