@@ -56,8 +56,9 @@ Legend: **[ ]** ej påbörjad · **[~]** påbörjad · **[x]** klar och pushad
 
 ## E. Teknik
 
-- [ ] **E1. Ingen automatisk testkörning.** Logiken testas för hand i
-      sandlådan vid varje ändring.
+- [x] **E1. Automatisk kontroll.** `kontrollera.js` kör skriptet i strikt
+      läge mot en låtsas-DOM och söker statiskt efter odeklarerade namn.
+      Fångade två riktiga fel som syntaxkontroll missade.
 - [ ] **E2. Allt ligger i en fil.** kora.html är över 40 kB med HTML, CSS
       och JS i samma dokument.
 - [ ] **E3. Ingen felrapportering.** Krascher i webbläsaren syns inte.
@@ -66,4 +67,20 @@ Legend: **[ ]** ej påbörjad · **[~]** påbörjad · **[x]** klar och pushad
 
 ## Gjort i denna omgång
 
-A1–A5 och B1–B3. Se README för hur de fungerar.
+A1–A5, B1–B3 och E1.
+
+### Två fel som nästan gick ut i produktion
+
+**Hela variabelblocket saknades.** En textersättning hakade på en rad som
+bara finns i Mapillary-appen, matchade aldrig, och misslyckades tyst.
+Elva variabler användes utan att deklareras. Appen kraschade direkt med
+`husrutnat is not defined`.
+
+**`riktningsskillnad` fanns inte i kora.html.** Funktionen är definierad i
+Mapillary-appen, men jag anropade den tre gånger härifrån — i trafikens
+vägval och i bedömningen av tecken. Båda hade kraschat vid körning.
+
+Mina kontroller letade bara efter syntaxfel och element-id. Ingen av dem
+kan hitta en variabel som aldrig deklarerats, eftersom det är ett
+körningsfel och inte ett syntaxfel. Därför finns `kontrollera.js` nu, och
+den är provad mot båda felen genom att återinföra dem.

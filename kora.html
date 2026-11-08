@@ -303,6 +303,22 @@ let korning = { x:0, z:0, kurs:0, fart:0, ratt:0 };
 let tangent = {}, pekreglage = { gas:false, broms:false, vanster:false, hoger:false };
 let aktuellGrans = 50, aktuellGata = "—", utanforVag = false;
 
+/* Vägnätet som graf, och trafiken som kör den */
+let grafNoder = new Map(), grafLista = [], trafik = [];
+const TRAFIKANTAL = 22;
+
+/* Bedömning */
+let anmarkningar = [], senasteAnmarkning = {}, anmTimer = null;
+let tidFortkorning = 0, tidFelSida = 0, forraSegStor = null;
+let husrutnat = new Map(), signaler = [];
+let korstrackaM = 0;
+
+/* Tecken */
+let blinkers = 0, blinkersVidSvang = false, kurshistorik = [];
+
+/* Frågor i världen */
+let aktivFraga = null, besvarade = {}, fragepunkter = [];
+
 function logg(t){ $("logg").textContent = t; }
 function framdrift(p){ $("framdrift").style.width = (p*100) + "%"; }
 
@@ -849,6 +865,11 @@ function registreraIRutnat(seg){
       if(!rutnat.has(n)) rutnat.set(n, []);
       rutnat.get(n).push(seg);
     }
+}
+
+/* Minsta vinkel mellan två kurser i grader, 0–180. Klarar nollgränsen. */
+function riktningsskillnad(a, b){
+  return Math.abs(((a - b) % 360 + 540) % 360 - 180);
 }
 
 function avstandTillSegment(x, z, s){
