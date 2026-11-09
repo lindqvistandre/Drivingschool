@@ -7,6 +7,11 @@ const html = fs.readFileSync(path, "utf8");
 const skript = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(m => m[1]);
 const js = skript[skript.length - 1];
 
+if(!js || js.trim().length < 50){
+  console.log("Ingen skriptkod i " + path.split("/").pop() + " — inget att kontrollera.");
+  process.exit(0);
+}
+
 let fel = 0;
 const anm = t => { console.log("  FEL: " + t); fel++; };
 
@@ -17,75 +22,7 @@ for(const m of js.matchAll(/\$\("([^"]+)"\)/g))
 
 /* 2. Kör skriptet i strikt läge mot en låtsas-DOM. Odeklarerade
       variabler kastar ReferenceError direkt. */
-function falsktElement(){
-  const e = {
-    style:{}, dataset:{}, classList:{ add(){}, remove(){} },
-    children:[], textContent:"", innerHTML:"", value:"", hidden:false,
-    clientWidth:800, clientHeight:600, files:[],
-    addEventListener(){}, removeEventListener(){}, appendChild(){},
-    setAttribute(){}, getAttribute(){ return null; },
-    querySelectorAll(){ return []; }, focus(){}, click(){},
-    setPointerCapture(){}, releasePointerCapture(){},
-    getContext(){ return falsktRitstift(); }
-  };
-  return e;
-}
-function falsktRitstift(){
-  const g = {};
-  ["clearRect","fillRect","beginPath","moveTo","lineTo","closePath","fill",
-   "arc","fillText","createLinearGradient","addColorStop"].forEach(n =>
-     g[n] = () => ({ addColorStop(){} }));
-  g.createLinearGradient = () => ({ addColorStop(){} });
-  return g;
-}
-
-global.window = { addEventListener(){}, focus(){}, top:{}, self:{} };
-global.window.self = global.window; global.window.top = global.window;
-global.document = {
-  getElementById: () => falsktElement(),
-  createElement: () => falsktElement(),
-  body: Object.assign(falsktElement(), { appendChild(){} }),
-  addEventListener(){}
-};
-global.navigator = { onLine:true, clipboard:{ writeText(){ return Promise.resolve(); } } };
-global.location = { protocol:"https:", origin:"https://test", hostname:"test" };
-global.localStorage = {
-  _d:{}, getItem(k){ return this._d[k] || null; },
-  setItem(k,v){ this._d[k]=v; }, removeItem(k){ delete this._d[k]; }
-};
-global.addEventListener = () => {};
-global.performance = { now: () => Date.now() };
-global.requestAnimationFrame = () => 0;
-global.fetch = () => Promise.reject(new TypeError("ingen nät i testet"));
-global.AbortController = function(){ this.signal = {}; this.abort = () => {}; };
-global.Blob = function(){}; global.URL = { createObjectURL(){}, revokeObjectURL(){} };
-global.innerWidth = 800; global.innerHeight = 600; global.devicePixelRatio = 1;
-
-/* Minimal THREE så att scenbyggandet går att köra */
-function Vek(){ return { set(){}, lerp(){}, copy(){} }; }
-const grupp = () => ({ add(){}, position:{ set(){}, y:0, x:0, z:0, lerp(){} },
-  rotation:{ x:0, y:0 }, children:[{},{},{ material:{ color:{ setHex(){} } } }],
-  lookAt(){}, bindTooltip(){ return this; } });
-global.THREE = new Proxy({
-  Scene: function(){ return { add(){}, fog:null, background:null }; },
-  Group: grupp, Mesh: grupp, Object3D: grupp,
-  Color: function(){ return { setHex(){} }; },
-  Vector3: Vek, Clock: function(){ return { getDelta: () => 0.016 }; },
-  BufferGeometry: function(){ return { setAttribute(){}, computeVertexNormals(){},
-    rotateX(){}, rotateZ(){} }; },
-  Float32BufferAttribute: function(){},
-  CanvasTexture: function(){ return { needsUpdate:false }; },
-  Shape: function(){ return { moveTo(){}, lineTo(){} }; },
-  WebGLRenderer: function(){ return { setPixelRatio(){}, setSize(){},
-    render(){}, resize(){}, domElement: falsktElement() }; },
-  PerspectiveCamera: function(){ return { position: Vek(), lookAt(){},
-    updateProjectionMatrix(){}, aspect:1 }; },
-  DoubleSide:2, BackSide:1, Fog: function(){}
-}, { get(t,p){
-  if(p in t) return t[p];
-  return function(){ return Object.assign(grupp(), { rotateX(){}, rotateZ(){},
-    material:{ color:{ setHex(){} } } }); };
-}});
+require("./miljo.js").stall(global);
 
 /* 3. Statisk genomsökning: hittar variabler som används men aldrig
       deklareras, även inne i funktioner som inte körs vid start.
@@ -145,21 +82,6 @@ if(anvanda.size){
   [...anvanda.entries()].sort((a,b)=>b[1]-a[1]).forEach(([n,c]) =>
     anm(`${n} används ${c} gånger men deklareras aldrig`));
 } else console.log("Statisk genomsökning: inga odeklarerade namn");
-
-/* Leaflet och Mapillary laddas från CDN i webbläsaren */
-const lagerMock = () => ({ addTo(){ return lagerMock(); }, clearLayers(){},
-  setLatLng(){}, bindTooltip(){ return lagerMock(); }, remove(){} });
-global.L = {
-  map: () => ({ setView(){ return global.L.map(); }, on(){}, panTo(){},
-    getBounds: () => ({ getNorth:()=>59.3, getSouth:()=>59.2,
-      getEast:()=>18.1, getWest:()=>18.0, getCenter:()=>({lat:59.25}) }),
-    invalidateSize(){}, getCenter:()=>({lat:59.25,lng:18.05}) }),
-  tileLayer: lagerMock, layerGroup: lagerMock, circleMarker: lagerMock,
-  circle: lagerMock, marker: lagerMock,
-  control: { zoom: () => ({ addTo(){} }) }
-};
-global.mapillary = { Viewer: function(){ return { on(){}, moveTo(){ return Promise.resolve(); },
-  getBearing(){ return Promise.resolve(0); }, resize(){} }; } };
 
 console.log("Kör skriptet i strikt läge…");
 try{

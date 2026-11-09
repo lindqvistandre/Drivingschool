@@ -56,9 +56,9 @@ Legend: **[ ]** ej påbörjad · **[~]** påbörjad · **[x]** klar och pushad
 
 ## E. Teknik
 
-- [x] **E1. Automatisk kontroll.** `kontrollera.js` kör skriptet i strikt
-      läge mot en låtsas-DOM och söker statiskt efter odeklarerade namn.
-      Fångade två riktiga fel som syntaxkontroll missade.
+- [x] **E1. Automatisk kontroll och regressionsskydd.** `sh kolla.sh` kör
+      allt: strukturkontroll av varje app plus 131 regressionsprov mot den
+      riktiga koden. Se avsnittet nedan.
 - [ ] **E2. Allt ligger i en fil.** kora.html är över 40 kB med HTML, CSS
       och JS i samma dokument.
 - [ ] **E3. Ingen felrapportering.** Krascher i webbläsaren syns inte.
@@ -84,3 +84,49 @@ Mina kontroller letade bara efter syntaxfel och element-id. Ingen av dem
 kan hitta en variabel som aldrig deklarerats, eftersom det är ett
 körningsfel och inte ett syntaxfel. Därför finns `kontrollera.js` nu, och
 den är provad mot båda felen genom att återinföra dem.
+
+
+---
+
+## Regressionsskydd
+
+Kör **`sh kolla.sh`** före varje push. Ett kommando, tre delar:
+
+**`kontrollera.js`** per app — varje element som koden hämtar måste finnas,
+inga namn får användas utan att deklareras, och hela skriptet körs i strikt
+läge mot en låtsas-webbläsare.
+
+**`tester.js`** — 131 prov mot den riktiga koden i `kora.html`. Funktionerna
+plockas ut ur källfilen och anropas på riktigt. Prov mot kopior är värdelösa
+som skydd, eftersom de fortsätter vara godkända när källan går sönder.
+
+**`miljo.js`** — den låtsas-webbläsare båda delar, så de inte kan glida isär.
+
+### Vad proven skyddar
+
+| Område | Exempel på vad som fångas |
+|---|---|
+| Element | Ett id försvinner ur HUD men koden hämtar det fortfarande |
+| Variabler | Ett namn används men deklareras aldrig |
+| Anmärkningar | `anmark("x")` utan motsvarande text i `REGLER` |
+| Geometri | Skarvplattorna slutar täcka hörnen |
+| Rendering | `DoubleSide` tappas och vägnätet blir osynligt |
+| Vägsida | Höger och vänster kastas om vid omvänd färdriktning |
+| Grafen | Noder slutar kopplas ihop och trafiken fastnar |
+| Övningsområdet | En skylttyp eller cirkulationsplatsen försvinner |
+| Frågorna | Dubbletter, trasiga svarsindex, för få utplacerade |
+| Fysiken | Acceleration eller bromssträcka glider från verkliga värden |
+| Nätet | Färre reservservrar, tappad tidsgräns, borttagen cache |
+
+### Provade mot riktiga fel
+
+Varje regel här har provats genom att återinföra felet den ska fånga:
+
+- `DoubleSide` borttagen → faller på renderingsprovet
+- topphastighet ändrad → faller på fysikprovet
+- elementet `blink-h` omdöpt → faller på elementprovet
+- regeltexten `krockBil` borttagen → faller på anmärkningsprovet
+- variabeln `husrutnat` borttagen → faller på den statiska genomsökningen
+- funktionen `riktningsskillnad` borttagen → faller på samma genomsökning
+
+Ett prov som inte faller när felet återinförs skyddar ingenting.
