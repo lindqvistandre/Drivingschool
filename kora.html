@@ -113,6 +113,142 @@ canvas{display:block}
   text-transform:uppercase;pointer-events:auto}
 
 /* ── HUD ──────────────────────────────────────────── */
+.hud{position:fixed;inset:0;z-index:20;pointer-events:none;
+  padding:calc(42px + env(safe-area-inset-top,0px)) 12px calc(12px + env(safe-area-inset-bottom,0px))}
+
+/* Vänster kolumn — inget ligger ovanpå något annat */
+.hud__vanster{position:absolute;left:12px;top:calc(44px + env(safe-area-inset-top,0px));
+  display:flex;flex-direction:column;gap:6px;align-items:flex-start;max-width:68vw}
+.gata{background:rgba(25,28,32,.86);border:1px solid var(--linje);border-radius:3px;
+  padding:5px 11px;font-family:var(--display);font-weight:600;font-size:16px;
+  letter-spacing:.03em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}
+.anmbricka{background:rgba(25,28,32,.86);border:1px solid var(--linje);border-radius:3px;
+  padding:4px 10px;font-family:var(--mono);font-size:10px;letter-spacing:.07em;
+  text-transform:uppercase;color:var(--dov)}
+.anmbricka b{color:var(--gul);font-family:var(--display);font-size:13px}
+.anmtext{background:rgba(200,16,46,.94);border-radius:3px;padding:7px 12px;
+  font-size:12.5px;line-height:1.4;max-width:100%;display:none}
+.anmtext[data-pa="true"]{display:block}
+.bricka{background:rgba(25,28,32,.86);border:1px solid var(--linje);border-radius:3px;
+  padding:5px 11px;font-family:var(--mono);font-size:11px}
+.varning{background:rgba(200,16,46,.92);border-color:transparent;font-family:var(--brod);
+  font-size:12.5px;display:flex;gap:9px;align-items:center;pointer-events:auto}
+.varning button{background:rgba(0,0,0,.3);border:none;border-radius:2px;padding:3px 8px;
+  font-family:var(--display);font-weight:600;font-size:12px;text-transform:uppercase}
+
+/* Höger kolumn */
+.hud__hoger{position:absolute;right:12px;top:calc(44px + env(safe-area-inset-top,0px));
+  display:flex;flex-direction:column;gap:6px;align-items:flex-end;pointer-events:auto}
+.hknapp{background:rgba(25,28,32,.86);border:1px solid var(--linje);border-radius:3px;
+  padding:6px 11px;font-family:var(--display);font-weight:600;font-size:12.5px;
+  letter-spacing:.05em;text-transform:uppercase;white-space:nowrap}
+.hknapp:hover{background:var(--panel)}
+
+/* Kompassband */
+.kompassband{position:absolute;top:env(safe-area-inset-top,0px);left:0;right:0;height:38px;
+  overflow:hidden;background:linear-gradient(to bottom,rgba(25,28,32,.8),rgba(25,28,32,0));
+  -webkit-mask-image:linear-gradient(to right,transparent,#000 18%,#000 82%,transparent);
+          mask-image:linear-gradient(to right,transparent,#000 18%,#000 82%,transparent)}
+.kompassband b{position:absolute;top:0;left:0;height:100%;font-weight:400}
+.kompassband i{position:absolute;top:8px;width:1px;height:6px;background:var(--linje)}
+.kompassband i.stor{height:11px;background:var(--dov)}
+.kompassband u{position:absolute;top:19px;transform:translateX(-50%);text-decoration:none;
+  font-family:var(--display);font-weight:600;font-size:12px;letter-spacing:.1em}
+.kompassband em{position:absolute;top:0;left:50%;transform:translateX(-50%);width:0;height:0;
+  border-left:5px solid transparent;border-right:5px solid transparent;border-top:8px solid var(--gul)}
+
+/* Mätartavla — ovanför reglagen, aldrig under dem */
+.matartavla{position:absolute;left:12px;bottom:calc(104px + env(safe-area-inset-bottom,0px));
+  display:flex;align-items:flex-end;gap:11px}
+.fart{font-family:var(--display);font-weight:700;font-size:44px;line-height:.85;
+  text-shadow:0 2px 14px rgba(0,0,0,.9)}
+.fart span{font-family:var(--mono);font-size:10px;font-weight:400;letter-spacing:.13em;color:var(--dov)}
+.skylt{width:46px;height:46px;border-radius:50%;background:#fff;border:5px solid var(--rod);
+  display:grid;place-content:center;font-family:var(--display);font-weight:700;font-size:19px;
+  color:#111;box-shadow:0 3px 14px rgba(0,0,0,.6)}
+
+.inmatning{position:absolute;left:50%;bottom:calc(96px + env(safe-area-inset-bottom,0px));
+  transform:translateX(-50%);font-family:var(--mono);font-size:9.5px;letter-spacing:.09em;
+  text-transform:uppercase;color:var(--dov);background:rgba(25,28,32,.78);
+  border-radius:3px;padding:3px 9px;white-space:nowrap;max-width:92vw;overflow:hidden}
+
+/* Reglage: en rad längst ned, styrning vänster, gas och broms höger */
+.reglage{position:absolute;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom,0px));
+  display:flex;justify-content:space-between;align-items:flex-end;gap:10px;pointer-events:auto}
+.grupp{display:flex;gap:9px}
+.pedal{width:66px;height:66px;border-radius:10px;background:rgba(46,52,59,.92);
+  border:1px solid var(--linje);font-family:var(--display);font-weight:700;font-size:23px;
+  display:grid;place-content:center;user-select:none;-webkit-user-select:none}
+.pedal[data-ned="true"],.pedal:active{background:var(--gul);color:#191c20}
+.pedal--gas{background:rgba(47,143,91,.55)}
+.pedal--broms{background:rgba(200,16,46,.5)}
+.blink{display:flex;gap:8px;padding-bottom:9px}
+.blink__pil{width:46px;height:38px;border-radius:7px;background:rgba(46,52,59,.92);
+  border:1px solid var(--linje);display:grid;place-content:center;
+  font-family:var(--display);font-weight:700;font-size:16px;color:var(--dov);
+  user-select:none;-webkit-user-select:none}
+.blink__pil[data-pa="true"]{background:var(--gron);color:#fff;border-color:var(--gron)}
+
+@media (max-width:420px){
+  .pedal{width:58px;height:58px;font-size:20px}
+  .blink__pil{width:40px;height:34px}
+  .fart{font-size:36px}
+  .hud__vanster{max-width:58vw}
+  .hknapp{font-size:11px;padding:5px 9px}
+}
+.fragerutan{position:absolute;inset:0;z-index:55;display:grid;align-content:end;
+  padding:0;background:rgba(14,16,19,.55);pointer-events:auto;
+  opacity:0;visibility:hidden;transition:opacity .22s ease}
+.fragerutan[data-pa="true"]{opacity:1;visibility:visible}
+.fr__kort{background:var(--asfalt);border-top:3px solid var(--gul);
+  border-radius:12px 12px 0 0;padding:17px 18px 20px;max-height:78dvh;overflow-y:auto;
+  width:min(620px,100%);margin:0 auto}
+.fr__tagg{font-family:var(--mono);font-size:9.5px;letter-spacing:.15em;
+  color:#191c20;background:var(--gul);padding:3px 8px;border-radius:2px}
+.fr__kort h3{font-family:var(--brod);font-weight:600;font-size:17.5px;
+  line-height:1.42;margin:11px 0 14px}
+.fr__svar{display:grid;gap:7px}
+.fr__svar button{text-align:left;background:var(--panel);border:1px solid transparent;
+  border-left:3px solid var(--linje);border-radius:3px;padding:12px 14px;
+  font-size:14.5px;line-height:1.4;color:var(--vit)}
+.fr__svar button[data-utfall="ratt"]{border-left-color:var(--gron);background:rgba(47,143,91,.17)}
+.fr__svar button[data-utfall="fel"]{border-left-color:var(--rod);background:rgba(200,16,46,.15)}
+.fr__forklaring{margin-top:14px;padding:13px 15px;background:var(--panel);
+  border-left:3px solid var(--gul);border-radius:3px}
+.fr__forklaring p{margin:0;font-size:13.5px;line-height:1.6}
+.fr__regel{margin-top:10px;font-family:var(--mono);font-size:10.5px;color:var(--dov);line-height:1.5}
+#fr-fortsatt{width:100%;margin-top:14px}
+.sam{position:absolute;inset:0;z-index:60;display:grid;place-content:center;
+  padding:22px;background:rgba(14,16,19,.86);pointer-events:auto;
+  opacity:0;visibility:hidden;transition:opacity .2s ease}
+.sam[data-pa="true"]{opacity:1;visibility:visible}
+.sam__kort{background:var(--asfalt);border:1px solid var(--linje);
+  border-top:3px solid var(--gul);border-radius:5px;padding:22px;
+  width:min(460px,88vw);max-height:80dvh;overflow-y:auto}
+.sam__kort h2{font-family:var(--display);font-weight:700;font-size:26px;
+  letter-spacing:.06em;text-transform:uppercase;margin:0 0 4px}
+.sam__rubrik{font-family:var(--mono);font-size:11.5px;color:var(--gul);
+  letter-spacing:.08em;margin:0 0 16px}
+.sam-rad{display:flex;gap:12px;align-items:flex-start;padding:10px 0;
+  border-top:1px solid var(--linje)}
+.sam-rad b{font-family:var(--display);font-size:19px;color:var(--rod);flex:0 0 36px}
+.sam-rad span{font-size:13.5px;line-height:1.45}
+.sam-rad em{display:block;font-family:var(--mono);font-size:10.5px;color:var(--dov);
+  font-style:normal;margin-top:3px}
+.sam-bra{color:#5fc48c;font-size:15px;margin:0;padding:12px 0}
+.sam__knappar{display:flex;gap:8px;margin-top:18px}
+.sam__knappar .knapp{flex:1}
+.inmatning{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);
+  font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--dov);background:rgba(25,28,32,.8);border:1px solid var(--linje);
+  border-radius:3px;padding:4px 11px;white-space:nowrap}
+.inmatning[data-aktiv="true"]{color:var(--gul);border-color:var(--gul)}
+.spara{position:absolute;right:14px;top:50px;background:rgba(25,28,32,.84);
+  border:1px solid var(--linje);border-radius:3px;padding:6px 11px;
+  font-family:var(--display);font-weight:600;font-size:13px;letter-spacing:.05em;
+  text-transform:uppercase;pointer-events:auto}
+
+/* ── HUD ──────────────────────────────────────────── */
 .hud{position:fixed;inset:0;z-index:20;pointer-events:none}
 .matartavla{position:absolute;left:14px;bottom:14px;display:flex;align-items:flex-end;gap:12px}
 .fart{font-family:var(--display);font-weight:700;font-size:54px;line-height:.85;letter-spacing:.02em;
@@ -200,17 +336,44 @@ canvas{display:block}
 
 <div class="hud" id="hud" hidden>
   <div class="kompassband" id="kompassband"><b id="kband"></b><em></em></div>
-  <div class="gata" id="gata">—</div>
-  <div class="anmbricka" id="anmbricka">Anmärkningar <b id="anmrakning">0</b> ·
-    Rätt <b id="rattrakning">0</b> av <b id="fragerakning">0</b></div>
-  <div class="anmtext" id="anm" data-pa="false">—</div>
-  <div class="notis" id="notis" data-pa="false">—</div>
+
+  <div class="hud__vanster">
+    <div class="gata" id="gata">—</div>
+    <div class="anmbricka" id="anmbricka">Anm <b id="anmrakning">0</b> ·
+      Rätt <b id="rattrakning">0</b>/<b id="fragerakning">0</b></div>
+    <div class="anmtext" id="anm" data-pa="false">—</div>
+    <div class="bricka varning" id="utanfor" hidden>
+      <span>Utanför vägbanan</span><button type="button" id="tillbaka">Tillbaka</button>
+    </div>
+  </div>
+
+  <div class="hud__hoger">
+    <button class="hknapp" id="avsluta">Avsluta pass</button>
+    <button class="hknapp" id="spara">Spara världen</button>
+    <button class="hknapp" id="byt">Byt område</button>
+  </div>
+
   <div class="matartavla">
     <div class="fart"><span id="farttext">0</span><br><span>KM/H</span></div>
     <div class="skylt" id="granssskylt">50</div>
   </div>
-  <button class="spara" id="spara">Spara världen</button>
-  <button class="avsluta" id="avsluta">Avsluta pass</button>
+
+  <div class="inmatning" id="inmatning">—</div>
+
+  <div class="reglage">
+    <div class="grupp">
+      <div class="pedal" id="p-vanster">◀</div>
+      <div class="pedal" id="p-hoger">▶</div>
+    </div>
+    <div class="blink">
+      <div class="blink__pil" id="blink-v">◀</div>
+      <div class="blink__pil" id="blink-h">▶</div>
+    </div>
+    <div class="grupp">
+      <div class="pedal pedal--broms" id="p-broms">▼</div>
+      <div class="pedal pedal--gas" id="p-gas">▲</div>
+    </div>
+  </div>
 
   <div class="fragerutan" id="fragerutan" data-pa="false">
     <div class="fr__kort">
@@ -667,7 +830,10 @@ function lagg(pos, farg, y){
   const g = new THREE.BufferGeometry();
   g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
   g.computeVertexNormals();
-  const mesh = new THREE.Mesh(g, new THREE.MeshLambertMaterial({ color:farg }));
+  // DoubleSide är nödvändigt: trianglarnas lindning gör annars att hela
+  // vägnätet blir osynligt uppifrån. Det var orsaken till den tomma gräsmattan.
+  const mesh = new THREE.Mesh(g, new THREE.MeshLambertMaterial({
+    color:farg, side:THREE.DoubleSide }));
   mesh.position.y = y;
   scen.add(mesh);
 }
@@ -1333,8 +1499,7 @@ function uppdatera(dt){
   if(hoger) aktiva.push("HÖGER");
   if(hand) aktiva.push("HANDBROMS");
   const ruta = $("inmatning");
-  ruta.textContent = aktiva.length ? aktiva.join(" · ") + "  (" + senasteKalla + ")"
-                                   : "ingen inmatning — klicka i rutan, tryck sedan W";
+  ruta.textContent = aktiva.length ? aktiva.join(" · ") : "klicka i bilden, kör med W A S D";
   ruta.dataset.aktiv = String(aktiva.length > 0);
 
   // Längsgående
@@ -1408,15 +1573,9 @@ function ritaHUD(){
   if(++hudRakning % 10) return;
   $("granssskylt").textContent = aktuellGrans;
   $("gata").textContent = aktuellGata;
-  const over = Math.abs(korning.fart)*3.6 > aktuellGrans + 3;
-  if(utanforVag) visaNotis("Du är utanför vägbanan");
-  else if(over)  visaNotis("Du kör för fort — gränsen är " + aktuellGrans);
-  else           visaNotis(null);
-}
-function visaNotis(t){
-  const n = $("notis");
-  if(t){ n.textContent = t; n.dataset.pa = "true"; }
-  else n.dataset.pa = "false";
+  // Fortkörning och vägbanan hanteras av bedom(); skylten färgas bara om
+  $("granssskylt").style.borderColor =
+    Math.abs(korning.fart)*3.6 > aktuellGrans + 3 ? "#ff2a44" : "";
 }
 
 /* A3: frågorna in i världen.
@@ -1543,6 +1702,27 @@ function visaSammanfattning(){
   sparaFramsteg();
 }
 $("avsluta").addEventListener("click", visaSammanfattning);
+
+/* Tillbaka till startmenyn. Scenen rivs så att nästa område byggs rent. */
+$("byt").addEventListener("click", () => {
+  if(renderare){
+    renderare.domElement.remove();
+    renderare.dispose && renderare.dispose();
+  }
+  pagar = false;
+  scen = null; renderare = null; bil = null;
+  vagsegment = []; rutnat = new Map(); husrutnat = new Map();
+  korsningar = []; skyltlista = []; signaler = [];
+  trafik = []; grafNoder = new Map(); grafLista = [];
+  fragepunkter = []; aktivFraga = null;
+  $("hud").hidden = true;
+  $("fragerutan").dataset.pa = "false";
+  $("sammanfattning").dataset.pa = "false";
+  $("start").style.display = "";
+  $("bygg").disabled = false; $("testvarld").disabled = false;
+  framdrift(0);
+  logg("Välj område och bygg igen.");
+});
 $("fr-fortsatt").addEventListener("click", () => {
   $("fragerutan").dataset.pa = "false";
   aktivFraga = null;
@@ -1591,7 +1771,7 @@ function byggValj(){
   });
 }
 
-let sparadData = null;
+let sparadData = null, pagar = false;
 
 async function starta(element){
   origo = { lat:valtOmrade.lat, lng:valtOmrade.lng };
@@ -1618,6 +1798,7 @@ async function starta(element){
   $("start").style.display = "none";
   $("hud").hidden = false;
   klocka = new THREE.Clock();
+  pagar = true;
   animera();
 }
 
@@ -1718,6 +1899,7 @@ function initScen(){
 }
 
 function animera(){
+  if(!pagar || !renderare) return;
   requestAnimationFrame(animera);
   uppdatera(Math.min(klocka.getDelta(), 0.05));
   renderare.render(scen, kamera);
