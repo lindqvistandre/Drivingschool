@@ -60,6 +60,32 @@ const MASTE_FINNAS = ["start","valj","bygg","testvarld","diagnos","fil","logg","
 const idn = new Set([...html.matchAll(/id="([^"]+)"/g)].map(m => m[1]));
 MASTE_FINNAS.forEach(i => ok(idn.has(i), `elementet #${i} finns`));
 
+/* Varje element får finnas i exakt ett exemplar. Två element med samma id
+   gör att koden styr det ena medan du ser det andra — det var orsaken till
+   att reglagen låg dubbelt och HUD:en ovanpå sig själv. */
+grupp("Inga dubbletter i markup och stil");
+const alla = [...html.matchAll(/id="([^"]+)"/g)].map(m => m[1]);
+const dubbelId = alla.filter((v,i) => alla.indexOf(v) !== i);
+ok(dubbelId.length === 0, "inget id förekommer två gånger",
+   [...new Set(dubbelId)].join(", "));
+
+/* Samma för CSS-regler utanför media queries: en dubblett innebär att en
+   senare regel tyst skriver över en tidigare. */
+const stil = (html.match(/<style>([\s\S]*?)<\/style>/) || [,""])[1];
+const utanMedia = stil.replace(/@media[^{]*\{(?:[^{}]*\{[^{}]*\})*[^{}]*\}/g, "");
+const valjare = [...utanMedia.matchAll(/^\.([a-zA-Z_][\w-]*)\s*\{/gm)].map(m => m[1]);
+const dubbelCss = valjare.filter((v,i) => valjare.indexOf(v) !== i);
+ok(dubbelCss.length === 0, "ingen CSS-regel definieras två gånger",
+   [...new Set(dubbelCss)].join(", "));
+
+/* Varje klass som JavaScript sätter måste finnas i stilmallen */
+grupp("Klasser som koden sätter finns i stilmallen");
+for(const m of js.matchAll(/className\s*=\s*"([^"]+)"/g))
+  m[1].split(/\s+/).forEach(c =>
+    ok(stil.includes("." + c), `klassen .${c} är definierad`));
+for(const m of js.matchAll(/class="([a-zA-ZåäöÅÄÖ_-]+)"/g))
+  ok(stil.includes("." + m[1]), `klassen .${m[1]} är definierad`);
+
 /* Varje anmark("x") måste ha en text i REGLER, annars kraschar den */
 grupp("Varje anmärkningstyp har en regeltext");
 /* Läser hela anropet, inte bara det enklaste fallet — anmark() anropas
