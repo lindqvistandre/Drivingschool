@@ -24,6 +24,9 @@
   color-scheme:dark;
 }
 *{box-sizing:border-box}
+/* hidden-attributet förlorar annars mot display:flex och liknande —
+   det var därför "Utanför vägbanan" syntes hela tiden */
+[hidden]{display:none!important}
 html,body{height:100%;margin:0;overflow:hidden;overscroll-behavior:none}
 body{background:var(--djup);color:var(--vit);font-family:var(--brod);font-size:15px;
   -webkit-font-smoothing:antialiased;touch-action:none}
@@ -106,7 +109,7 @@ canvas{display:block}
   letter-spacing:.05em;text-transform:uppercase;white-space:nowrap}
 .hknapp:hover{background:var(--panel)}
 
-.fartruta{position:absolute;left:11px;bottom:calc(var(--botten) + 92px);
+.fartruta{position:absolute;left:11px;bottom:calc(var(--botten) + 138px);
   display:flex;align-items:flex-end;gap:11px}
 .fart{font-family:var(--display);font-weight:700;font-size:40px;line-height:.85;
   text-shadow:0 2px 16px rgba(0,0,0,.92)}
@@ -115,7 +118,8 @@ canvas{display:block}
 .skylt{width:46px;height:46px;font-size:19px;border-radius:50%;background:#fff;
   border:5px solid var(--rod);display:grid;place-content:center;font-family:var(--display);
   font-weight:700;color:#111;box-shadow:0 3px 14px rgba(0,0,0,.6)}
-.inmatning{position:absolute;left:50%;transform:translateX(-50%);
+/* Diagnosraden tar plats från tummarna på mobil — visas bara på dator */
+.inmatning{display:none;position:absolute;left:50%;transform:translateX(-50%);
   bottom:calc(var(--botten) + 86px);font-family:var(--mono);font-size:9.5px;letter-spacing:.09em;
   text-transform:uppercase;color:var(--dov);background:rgba(25,28,32,.78);border-radius:3px;
   padding:3px 9px;white-space:nowrap;max-width:90vw;overflow:hidden;text-overflow:ellipsis}
@@ -150,6 +154,7 @@ canvas{display:block}
 /* DATOR — tangentbordet styr, pedalerna blir små och kompletterande */
 @media (min-width:820px) and (pointer:fine){
   .tangenthjalp{display:block}
+  .inmatning{display:block}
   .styrning{left:50%;right:auto;transform:translateX(-50%);width:auto;
     justify-content:center;gap:28px;opacity:.72}
   .pedal{width:52px;height:52px;font-size:19px;border-radius:9px}
@@ -229,6 +234,7 @@ canvas{display:block}
   </div>
   <div class="matare"><i id="framdrift"></i></div>
   <div class="logg" id="logg">Välj område och tryck Bygg världen.</div>
+  <label class="filval"><input type="checkbox" id="trafikval"> Trafik (experimentellt)</label>
   <label class="filval">Sparad .json? <input type="file" id="fil" accept=".json,application/json"></label>
 </div>
 
@@ -363,7 +369,10 @@ let aktuellGrans = 50, aktuellGata = "—", utanforVag = false;
 
 /* Vägnätet som graf, och trafiken som kör den */
 let grafNoder = new Map(), grafLista = [], trafik = [];
-const TRAFIKANTAL = 22;
+/* Trafiken är avslagen tills grunden sitter. Koden finns kvar och slås
+   på med kryssrutan på startskärmen. */
+let TRAFIKANTAL = 0;
+const TRAFIK_NAR_PA = 22;
 
 /* Bedömning */
 let anmarkningar = [], senasteAnmarkning = {}, anmTimer = null;
@@ -658,9 +667,33 @@ function platta(ut, p, r, y, kanter = 9){
   }
 }
 
+/* En korsning är en punkt som delas av minst två olika gator — oavsett
+   om den ligger i gatans ände eller mitt på den. En T-korsning är en
+   sidogata vars ände möter mitten av en huvudgata; att bara räkna
+   ändpunkter missade alltså de flesta korsningar. */
+function korsningspunkter(vagar){
+  const gator = new Map();         // nodnyckel -> mängd av gatu-index
+  const pos = new Map();
+  vagar.forEach((v, i) => v.geometry.forEach(q => {
+    const p = tillMeter(q.lat, q.lon);
+    const n = nodnyckel(p.x, p.z);
+    if(!gator.has(n)){ gator.set(n, new Set()); pos.set(n, p); }
+    gator.get(n).add(i);
+  }));
+  const ut = [];
+  gator.forEach((s, n) => { if(s.size >= 2) ut.push(pos.get(n)); });
+  return ut;
+}
+function naraKorsning(punkter, x, z, r){
+  for(const p of punkter) if(Math.abs(p.x-x) < r && Math.abs(p.z-z) < r
+     && Math.hypot(p.x-x, p.z-z) < r) return true;
+  return false;
+}
+
 function byggVagar(vagar){
   const asfalt = [], kant = [], streck = [], trottoar = [];
   korsningar = [];
+  const kp = korsningspunkter(vagar);
 
   vagar.forEach(v => {
     const typ = VAGTYP[v.tags.highway];
@@ -683,15 +716,19 @@ function byggVagar(vagar){
 
       band(asfalt, a, b, hb, 0);
 
+      // Ingen målning genom själva korsningen
+      const mittX = (a.x+b.x)/2, mittZ = (a.z+b.z)/2;
+      const iKorsning = naraKorsning(kp, mittX, mittZ, hb + 6);
+
       // Kantlinjer i vitt en bit innanför kanten
-      if(typ.b >= 6){
+      if(typ.b >= 6 && !iKorsning){
         const ex = -dz/len*(hb-0.35), ez = dx/len*(hb-0.35);
         band(kant, {x:a.x+ex, z:a.z+ez}, {x:b.x+ex, z:b.z+ez}, 0.07, 0.015);
         band(kant, {x:a.x-ex, z:a.z-ez}, {x:b.x-ex, z:b.z-ez}, 0.07, 0.015);
       }
 
       // Streckad mittlinje på större vägar: 3 m streck, 3 m lucka
-      if(stor){
+      if(stor && !iKorsning){
         const steg = 6, antal = Math.floor(len/steg);
         for(let k = 0; k < antal; k++){
           const t1 = k*steg/len, t2 = (k*steg+3)/len;
@@ -813,7 +850,16 @@ function fartTextur(tal){
   const t = new THREE.CanvasTexture(c); t.needsUpdate = true; return t;
 }
 
+/* Flera gator möts i samma korsning, och varje gata ville sätta sin egen
+   skylt. Utan den här kontrollen klumpade de ihop sig i högar. */
+function forNaraAnnanSkylt(x, z, minsta){
+  for(const s of skyltlista)
+    if(Math.hypot(s.x - x, s.z - z) < minsta) return true;
+  return false;
+}
+
 function stallSkylt(textur, x, z, storlek, skyltTyp){
+  if(skyltTyp !== "traffic_signals" && forNaraAnnanSkylt(x, z, 9)) return false;
   const grupp = new THREE.Group();
   const stolpe = new THREE.Mesh(
     new THREE.CylinderGeometry(0.055, 0.055, 2.2, 6),
@@ -829,6 +875,7 @@ function stallSkylt(textur, x, z, storlek, skyltTyp){
   grupp.position.set(x, 0, z);
   scen.add(grupp);
   skyltlista.push({ x, z, mesh:skiva, typ:skyltTyp });
+  return true;
 }
 
 function byggSkyltar(noder){
@@ -858,8 +905,8 @@ function byggSkyltar(noder){
     const dx = k.p.x - k.riktning.x, dz = k.p.z - k.riktning.z;
     const l = Math.hypot(dx, dz) || 1;
     const bx = k.p.x - dx/l*8, bz = k.p.z - dz/l*8;
-    stallSkylt(tex.give_way, bx - dz/l*(k.hb+1.4), bz + dx/l*(k.hb+1.4), 1.5, "give_way");
-    satta++;
+    if(stallSkylt(tex.give_way, bx - dz/l*(k.hb+1.4), bz + dx/l*(k.hb+1.4), 1.5, "give_way"))
+      satta++;
   });
 
   // 3. Hastighetsskyltar där gränsen ändras
@@ -871,10 +918,10 @@ function byggSkyltar(noder){
     if(!fartTex[k.grans]) fartTex[k.grans] = fartTextur(k.grans);
     const dx = k.p.x - k.riktning.x, dz = k.p.z - k.riktning.z;
     const l = Math.hypot(dx, dz) || 1;
-    stallSkylt(fartTex[k.grans],
+    if(stallSkylt(fartTex[k.grans],
       k.p.x - dx/l*17 - dz/l*(k.hb+1.4),
-      k.p.z - dz/l*17 + dx/l*(k.hb+1.4), 1.3, "fart");
-    fartSatta++;
+      k.p.z - dz/l*17 + dx/l*(k.hb+1.4), 1.3, "fart"))
+      fartSatta++;
   });
 
   logg(`${satta} väjningsplikter och ${fartSatta} hastighetsskyltar härledda ur vägnätet`);
@@ -1461,6 +1508,7 @@ function uppdatera(dt){
 let hudRakning = 0;
 function ritaHUD(){
   $("farttext").textContent = Math.round(Math.abs(korning.fart) * 3.6);
+  $("utanfor").hidden = !utanforVag;
   const blink = Math.floor(performance.now()/450) % 2 === 0;
   $("blink-v").dataset.pa = String(blinkers === -1 && blink);
   $("blink-h").dataset.pa = String(blinkers ===  1 && blink);
@@ -1597,6 +1645,7 @@ function visaSammanfattning(){
   sparaFramsteg();
 }
 $("avsluta").addEventListener("click", visaSammanfattning);
+$("tillbaka").addEventListener("click", () => aterstall());
 
 /* Tillbaka till startmenyn. Scenen rivs så att nästa område byggs rent. */
 $("byt").addEventListener("click", () => {
@@ -1677,6 +1726,7 @@ async function starta(element){
   initScen();
   const antal = byggVarld(element);
   if(!antal) throw new Error("Inga körbara vägar hittades i området");
+  TRAFIKANTAL = $("trafikval").checked ? TRAFIK_NAR_PA : 0;
   const noder = byggGraf();
   logg("Vägnät: " + noder + " noder — startar trafik");
   bil = byggBil();

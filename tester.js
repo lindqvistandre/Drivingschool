@@ -29,7 +29,7 @@ const nara = (v, f, tol, text) =>
 require("./miljo.js").stall(global);
 
 /* ── Ladda den riktiga koden och plocka ut funktionerna ────── */
-const EXPORT = ["riktningsskillnad","avstandTillSegment","narmasteVag",
+const EXPORT = ["forNaraAnnanSkylt","korsningspunkter","naraKorsning","riktningsskillnad","avstandTillSegment","narmasteVag",
   "band","platta","byggGraf","nodnyckel","sidolage","kollision","placeraFragor",
   "ovningsomrade","tolkaFart","registreraIRutnat","registreraHus",
   "trafikSkaBromsa","fraga","bbox","tillMeter"];
@@ -246,6 +246,45 @@ ok(K.SERVRAR.every(s => /^https:\/\//.test(s.url)), "alla servrar använder http
 ok(/metod of \["POST","GET"\]/.test(js), "varje server provas med både POST och GET");
 ok(/medTidsgrans/.test(js), "anropen har en tidsgräns");
 ok(/lasCache/.test(js) && /sparaCache/.test(js), "världen cachas lokalt");
+
+/* ═══ 9. Det som orsakade kaoset på mobilen ═══ */
+grupp("hidden-attributet vinner alltid");
+ok(/\[hidden\]\{display:none!important\}/.test(html),
+   "global regel gör att hidden alltid döljer — annars syns Utanför-rutan jämt");
+ok(/\$\("utanfor"\)\.hidden\s*=\s*!utanforVag/.test(js),
+   "Utanför-rutan styrs av om bilen verkligen är utanför");
+
+grupp("Skyltar klumpar inte ihop sig");
+K._satt("skyltlista", [{ x:0, z:0 }]);
+ok(K.forNaraAnnanSkylt(3, 4, 9) === true,  "skylt 5 m bort räknas som för nära");
+ok(K.forNaraAnnanSkylt(9, 9, 9) === false, "skylt 12,7 m bort är fri");
+ok(/forNaraAnnanSkylt\(x, z, 9\)\) return false/.test(js),
+   "stallSkylt vägrar sätta en skylt för nära en annan");
+
+grupp("Vägmarkering korsar inte genom korsningar");
+K._satt("origo", { lat:59.2440, lng:18.0930 });
+/* T-korsning som i riktig OSM-data: huvudgatan har en nod där sidogatan
+   ansluter, men den noden är INTE huvudgatans ändpunkt. */
+const korsVagar = [
+  { geometry:[{lat:59.2440,lon:18.0920},{lat:59.2440,lon:18.0930},{lat:59.2440,lon:18.0940}] },
+  { geometry:[{lat:59.2430,lon:18.0930},{lat:59.2440,lon:18.0930}] }
+];
+const kp = K.korsningspunkter(korsVagar);
+ok(kp.length === 1, "en T-korsning ger exakt en korsningspunkt", kp.length);
+const ensam = K.korsningspunkter([korsVagar[0]]);
+ok(ensam.length === 0, "en ensam gata har inga korsningar", ensam.length);
+ok(K.naraKorsning(kp, 1, 1, 6) === true,  "mitt i korsningen räknas som korsning");
+ok(K.naraKorsning(kp, 80, 0, 6) === false, "80 m bort är inte korsning");
+
+grupp("Trafiken");
+ok(/let TRAFIKANTAL = 0/.test(js), "trafiken är avslagen som standard");
+ok(/TRAFIK_NAR_PA/.test(js) && /trafikval/.test(html), "trafiken kan slås på från startskärmen");
+ok(typeof K.trafikSkaBromsa === "function", "trafikkoden finns kvar för senare");
+
+grupp("Mobillayouten överlappar inte");
+const fartBotten = +(html.match(/\.fartruta\{[^}]*bottom:calc\(var\(--botten\) \+ (\d+)px\)/) || [,0])[1];
+ok(fartBotten >= 130, "mätartavlan ligger ovanför styrknapparna", fartBotten + " px");
+ok(/\.inmatning\{display:none;/.test(html), "diagnosraden är dold på mobil");
 
 /* ── Resultat ── */
 console.log("\n" + "─".repeat(52));
